@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>StrafatFX</title>
+  <link rel="icon" href="/assets/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="./styles/styles.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+
+<body>
+  <div class="container">
+
+    <div class="header">
+      <img src="/assets/StraftatFX.png" class="logo">
+      <h1>StrafatFX</h1>
+    </div>
+
+    <input id="textInput" placeholder="Type Here...">
+
+    <div id="charWarning" class="char-warning hidden">
+      ⚠ Max 500 characters reached
+    </div>
+
+ <div class="gradient-bar" id="gradientBar">
+
+  <div class="gradient-handle left" id="zone1">
+    <div class="handle-inner">
+      <div class="handle-line"></div>
+      <div class="handle-hex" id="hex1">#FFFFFF</div>
+    </div>
+  </div>
+
+  <div class="gradient-handle right" id="zone2">
+    <div class="handle-inner">
+      <div class="handle-line"></div>
+      <div class="handle-hex" id="hex2">#FFFFFF</div>
+    </div>
+  </div>
+
+</div>
+
+    <div class="mode-group">
+      <button class="mode" data-mode="1">1</button>
+      <button class="mode" data-mode="2">1/2</button>
+      <button class="mode" data-mode="3">1/3</button>
+      <button class="mode" data-mode="4">1/4</button>
+      <button class="mode active" data-mode="5">Per Letter</button>
+      <button class="mode" data-mode="6">Custom</button>
+    </div>
+
+    <div class="slider-group hidden" id="sliderGroup">
+      <label>Steps: <span id="stepValue">1</span></label>
+      <input type="range" id="depth" min="1" max="10" value="2">
+    </div>
+
+    <div class="toggles">
+      <label>Bold <input type="checkbox" id="bold"></label>
+      <label>Italic <input type="checkbox" id="italic"></label>
+      <label>Underline <input type="checkbox" id="underline"></label>
+      <label>Superscript <input type="checkbox" id="superscript"></label>
+    </div>
+
+    <div id="preview"></div>
+
+    <div class="output-wrapper">
+      <div id="outputDisplay"></div>
+      <textarea id="output"></textarea>
+      <button id="copyBtn">Copy</button>
+    </div>
+
+    <div class="save-actions">
+      <button id="saveUserBtn">Save Username</button>
+      <button id="saveQuipBtn">Save Quip</button>
+      <button id="removeModeBtn">Remove</button>
+    </div>
+
+    <div class="saved-sections">
+      <div class="saved-block">
+        <div class="saved-title">Usernames</div>
+        <div id="userList" class="saved-grid"></div>
+      </div>
+
+      <div class="saved-block">
+        <div class="saved-title">Quips</div>
+        <div id="quipList" class="saved-grid"></div>
+      </div>
+    </div>
+
+  </div>
+  <script type="module" src="./js/main.mjs"></script>
+</body>
+
+</html>
