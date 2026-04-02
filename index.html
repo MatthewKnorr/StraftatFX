@@ -17,31 +17,41 @@
     <div class="header">
       <img src="./assets/StraftatFX.png" class="logo">
       <h1>StrafatFX</h1>
-    </div>
 
-    <input id="textInput" placeholder="Type Here...">
+      <div class="header-actions">
+        <button id="openGuide" class="guide-btn">
+          <span id="guideBtnText">Guide</span>
+        </button>
+        <a href="https://github.com/MatthewKnorr/StrafatFX" target="_blank" class="github-link">
+          <i class="fa-brands fa-github"></i>
+        </a>
+      </div>
+    </div>
+    <div class="input-wrap">
+      <input id="textInput" placeholder="Type Here...">
+    </div>
 
     <div id="charWarning" class="char-warning hidden">
       ⚠ Max 500 characters reached
     </div>
 
- <div class="gradient-bar" id="gradientBar">
+    <div class="gradient-bar" id="gradientBar">
 
-  <div class="gradient-handle left" id="zone1">
-    <div class="handle-inner">
-      <div class="handle-line"></div>
-      <div class="handle-hex" id="hex1">#FFFFFF</div>
+      <div class="gradient-handle left" id="zone1">
+        <div class="handle-inner">
+          <div class="handle-line"></div>
+          <div class="handle-hex" id="hex1">#FFFFFF</div>
+        </div>
+      </div>
+
+      <div class="gradient-handle right" id="zone2">
+        <div class="handle-inner">
+          <div class="handle-line"></div>
+          <div class="handle-hex" id="hex2">#FFFFFF</div>
+        </div>
+      </div>
+
     </div>
-  </div>
-
-  <div class="gradient-handle right" id="zone2">
-    <div class="handle-inner">
-      <div class="handle-line"></div>
-      <div class="handle-hex" id="hex2">#FFFFFF</div>
-    </div>
-  </div>
-
-</div>
 
     <div class="mode-group">
       <button class="mode" data-mode="1">1</button>
@@ -69,8 +79,10 @@
     <div class="output-wrapper">
       <div id="outputDisplay"></div>
       <textarea id="output"></textarea>
+      <div id="charCount" class="char-count">0 / 500</div>
       <button id="copyBtn">Copy</button>
     </div>
+    
 
     <div class="save-actions">
       <button id="saveUserBtn">Save Username</button>
@@ -90,6 +102,14 @@
       </div>
     </div>
 
+  </div>
+
+  <div id="guideView" class="guide-view hidden">
+    <div class="guide-content">
+      <button id="closeGuide" class="close-guide">×</button>
+      <div id="guideMount"></div>
+
+    </div>
   </div>
   <script type="module" src="./js/main.mjs"></script>
 </body>

@@ -4,6 +4,7 @@ import { renderSaved } from "./saved.mjs";
 import { getList, saveList } from "./storage.mjs";
 import { state } from "./state.mjs";
 import { applyStyles } from "./formatter.mjs";
+import { initGuide } from "./guide.mjs";
 
 const el = id => document.getElementById(id);
 
@@ -118,6 +119,13 @@ function setColors(c1, c2) {
 
   updateGradientBar();
   update();
+
+
+  if (typeof guide !== "undefined") {
+    guide.updateGuideExample();
+  }
+
+  updateUIGradient();
 }
 
 function fitPreview() {
@@ -174,7 +182,6 @@ swapBtn.setAttribute("aria-label", "Swap");
 randomBtn.className = "gradient-btn";
 swapBtn.className = "gradient-btn";
 
-/* 🔥 UPDATED RANDOM BUTTON */
 randomBtn.onclick = () => {
   const [c1, c2] = randColor();
   setColors(c1, c2);
@@ -271,6 +278,7 @@ function update() {
   });
 
   fitPreview();
+  updateCharCount();
 }
 
 saveUserBtn.onclick = () => {
@@ -320,5 +328,92 @@ removeModeBtn.onclick = () => {
 requestAnimationFrame(() => {
   const [c1, c2] = randColor();
   setColors(c1, c2);
+
   renderSaved(userList, quipList);
+
+  window.guide = initGuide({ depth });
+
+  updateCharCount();
+
 });
+
+
+const guideView = document.getElementById("guideView");
+const openGuide = document.getElementById("openGuide");
+const closeGuide = document.getElementById("closeGuide");
+
+if (openGuide && guideView) {
+  openGuide.addEventListener("click", () => {
+    guideView.classList.remove("hidden");
+  });
+}
+
+if (closeGuide && guideView) {
+  closeGuide.addEventListener("click", () => {
+    guideView.classList.add("hidden");
+  });
+}
+
+guideView?.addEventListener("click", (e) => {
+  if (e.target === guideView) {
+    guideView.classList.add("hidden");
+  }
+});
+
+function updateGuideExample() {
+  const el = document.getElementById("guideExample");
+  if (!el) return;
+
+  const text = "UberMonkey";
+
+  const built = build(text, depth);
+  const styledParts = parts(text, depth);
+
+  el.innerHTML = "";
+
+  styledParts.forEach(({ ch, hex }) => {
+    const span = document.createElement("span");
+    span.textContent = ch;
+    if (hex) span.style.color = hex;
+    el.appendChild(span);
+  });
+}
+
+updateGuideExample();
+
+function updateUIGradient() {
+  const gradient = `linear-gradient(90deg, ${state.c1}, ${state.c2})`;
+  document.documentElement.style.setProperty("--guide-gradient", gradient);
+}
+
+function updateCharCount() {
+  const el = document.getElementById("charCount");
+  if (!el) return;
+
+  const text = input.value;
+
+  const built = build(text, depth);
+
+  const styled = applyStyles(built, {
+    bold: bold.checked,
+    italic: italic.checked,
+    underline: underline.checked,
+    superscript: superscript.checked
+  });
+
+  const clean = stripClosingTags(styled);
+  const len = clean.length;
+
+  el.textContent = `${len} / 500`;
+
+  if (len > 450) {
+    el.style.color = "#ff6b6b"; 
+    el.style.opacity = "1";
+  } else if (len > 32) {
+    el.style.color = "#facc15"; 
+    el.style.opacity = "0.9";
+  } else {
+    el.style.color = "#777"; 
+    el.style.opacity = "0.7";
+  }
+}
