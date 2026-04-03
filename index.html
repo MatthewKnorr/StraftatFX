@@ -10,6 +10,16 @@
   <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <!--  GOOGLE ANALYTICS -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-KFPSZWPXQH"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-KFPSZWPXQH');
+  </script>
+
 </head>
 
 <body>
@@ -31,6 +41,7 @@
         </a>
       </div>
     </div>
+
     <div class="input-wrap">
       <input id="textInput" placeholder="Type Here...">
     </div>
@@ -87,7 +98,6 @@
       <button id="copyBtn">Copy</button>
     </div>
 
-
     <div class="save-actions">
       <button id="saveUserBtn">Save Username</button>
       <button id="saveQuipBtn">Save Quip</button>
@@ -112,10 +122,9 @@
     <div class="guide-content">
       <button id="closeGuide" class="close-guide">×</button>
       <div id="guideMount"></div>
-
     </div>
   </div>
+
   <script type="module" src="./js/main.mjs"></script>
 </body>
-
 </html>

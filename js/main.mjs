@@ -185,6 +185,12 @@ swapBtn.className = "gradient-btn";
 randomBtn.onclick = () => {
   const [c1, c2] = randColor();
   setColors(c1, c2);
+
+  if (typeof gtag === "function") {
+    gtag('event', 'random_colors', {
+      event_category: 'interaction'
+    });
+  }
 };
 
 swapBtn.onclick = () => setColors(state.c2, state.c1);
@@ -192,7 +198,18 @@ swapBtn.onclick = () => setColors(state.c2, state.c1);
 actions.appendChild(randomBtn);
 actions.appendChild(swapBtn);
 
-copyBtn.onclick = () => copy(stripClosingTags(output.value));
+copyBtn.onclick = () => {
+  const text = stripClosingTags(output.value);
+  copy(text);
+
+  if (typeof gtag === "function") {
+    gtag('event', 'generate', {
+      event_category: 'usage',
+      event_label: 'copy_clicked',
+      value: text.length
+    });
+  }
+};
 
 document.querySelectorAll(".mode").forEach(b => {
   b.onclick = () => {
@@ -297,6 +314,12 @@ saveUserBtn.onclick = () => {
 
   renderSaved(userList, quipList);
   showToast("Username saved");
+
+  if (typeof gtag === "function") {
+    gtag('event', 'save_username', {
+      event_category: 'engagement'
+    });
+  }
 };
 
 saveQuipBtn.onclick = () => {
@@ -313,8 +336,14 @@ saveQuipBtn.onclick = () => {
   list.push(v);
   saveList("gd-quips", list);
 
-  renderSaved(userList, quipList);  
+  renderSaved(userList, quipList);
   showToast("Quip saved");
+
+  if (typeof gtag === "function") {
+    gtag('event', 'save_quip', {
+      event_category: 'engagement'
+    });
+  }
 };
 
 removeModeBtn.onclick = () => {
