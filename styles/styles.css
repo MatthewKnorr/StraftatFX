@@ -1,3 +1,7 @@
+:root {
+    --StraftatGrn: #acdaa6;
+}
+
 body {
     font-family: Inter, sans-serif;
     background: #090909;
@@ -16,12 +20,18 @@ body {
 
 h1 {
     margin-bottom: 24px;
-    font-size: 2.8rem;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 3rem;
+    font-weight: 600;
+    letter-spacing: 3.5px;
+    color: var(--StraftatGrn); 
+    transform: skewX(-7deg);
 }
 
 .header {
     display: flex;
     align-items: center;
+    justify-content: center; 
     gap: 14px;
 }
 
@@ -30,7 +40,8 @@ h1 {
     height: auto;
     max-height: 64px;
     object-fit: contain;
-    border-radius: 12px;
+    border-radius: 12px;    
+    transform: scaleX(-1);
 }
 
 .guide-btn {
