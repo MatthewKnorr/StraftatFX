@@ -190,7 +190,8 @@ randomBtn.onclick = () => {
 
   if (typeof gtag === "function") {
     gtag('event', 'random_colors', {
-      event_category: 'interaction'
+      event_category: 'interaction',
+      event_label: 'random_gradient_generated'
     });
   }
 };
@@ -204,15 +205,12 @@ copyBtn.onclick = () => {
   const text = stripClosingTags(output.value);
   copy(text);
 
-
   if (typeof gtag === "function") {
-
-    gtag('event', 'generate', {
-      event_category: 'usage',
-      event_label: 'copy_clicked'
+    gtag('event', 'copy_text', {
+      event_category: 'engagement',
+      event_label: 'copy_clicked',
+      value: text.length
     });
-  } else {
-    console.log("❌ GTAG NOT FOUND");
   }
 };
 
@@ -256,8 +254,20 @@ depth.oninput = () => {
   update();
 };
 
+let lastTracked = "";
+
 function update() {
   const text = input.value;
+
+  if (typeof gtag === "function" && text !== lastTracked) {
+    gtag('event', 'generate_text', {
+      event_category: 'usage',
+      event_label: 'text_updated',
+      value: text.length
+    });
+
+    lastTracked = text;
+  }
 
   const textLen = text.length || 1;
   depth.max = textLen;
@@ -298,6 +308,13 @@ function update() {
     underline: underline.checked,
     superscript: superscript.checked
   });
+
+  if (typeof gtag === "function" && text.length > 3) {
+    gtag('event', 'active_use', {
+      event_category: 'engagement',
+      value: text.length
+    });
+  }
 
   fitPreview();
   updateCharCount();
@@ -443,13 +460,13 @@ function updateCharCount() {
   el.textContent = `${len} / 500`;
 
   if (len > 450) {
-    el.style.color = "#ff6b6b"; 
+    el.style.color = "#ff6b6b";
     el.style.opacity = "1";
   } else if (len > 32) {
-    el.style.color = "#facc15"; 
+    el.style.color = "#facc15";
     el.style.opacity = "0.9";
   } else {
-    el.style.color = "#777"; 
+    el.style.color = "#777";
     el.style.opacity = "0.7";
   }
 }

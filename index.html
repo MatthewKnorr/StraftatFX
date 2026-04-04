@@ -11,17 +11,22 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
 
-  <!--  GOOGLE ANALYTICS -->
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag() { dataLayer.push(arguments); }
-  </script>
-
+  <!-- GOOGLE ANALYTICS -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-KFPSZWPXQH"></script>
 
   <script>
+    window.dataLayer = window.dataLayer || [];
+
+    function gtag() { dataLayer.push(arguments); }
+
     gtag('js', new Date());
-    gtag('config', 'G-KFPSZWPXQH');
+
+    gtag('config', 'G-KFPSZWPXQH', {
+      send_page_view: true,
+      debug_mode: true
+    });
+
+    window.gtag = gtag;
   </script>
 
 </head>
