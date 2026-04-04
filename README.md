@@ -1,6 +1,6 @@
-# StrafatFX
+# StraftatFX
 
-StrafatFX is a lightweight, browser-based gradient text generator built for creating styled usernames, tags, and chat text specifically for Strafat. It focuses on speed, simplicity, and giving users full control over how their text looks before copying it anywhere.
+StraftatFX is a lightweight, browser-based gradient text generator built for creating styled usernames, tags, and chat text specifically for Strafat. It focuses on speed, simplicity, and giving users full control over how their text looks before copying it anywhere.
 
 ## Features
 
@@ -20,7 +20,7 @@ StrafatFX is a lightweight, browser-based gradient text generator built for crea
 
 ## How It Works
 
-StrafatFX generates gradients by interpolating between two selected colors and applying them across visible characters in the text.
+StraftatFX generates gradients by interpolating between two selected colors and applying them across visible characters in the text.
 
 Depending on the selected mode, the gradient is either:
 - Applied per letter (smooth transition)
@@ -74,7 +74,7 @@ Saved usernames and quips can be reused instantly, and remove mode allows quick 
 
 ## Goals
 
-StrafatFX was built to provide a fast, no-friction way to generate styled text without relying on heavy frameworks or complex workflows. The focus is on usability, performance, and clean output.
+StraftatFX was built to provide a fast, no-friction way to generate styled text without relying on heavy frameworks or complex workflows. The focus is on usability, performance, and clean output.
 
 ## Future Improvements
 
@@ -86,7 +86,7 @@ StrafatFX was built to provide a fast, no-friction way to generate styled text w
 
 ## Usage Notice
 
-The name "StrafatFX" may not be used for redistributed versions without permission.
+The name "StraftatFX" may not be used for redistributed versions without permission.
 
 ## License
 

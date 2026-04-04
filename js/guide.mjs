@@ -6,11 +6,11 @@ export function initGuide({ depth }) {
   const mount = document.getElementById("guideMount");
 
   mount.innerHTML = `
-    <h2 class="fx-title">StrafatFX</h2>
+    <h2 class="fx-title">StraftatFX</h2>
 <h3 class="guide-subtitle">How to Use</h3>
 
 <p>
-StrafatFX lets you generate gradient-colored text for use in Strafat usernames and chat.
+StraftatFX lets you generate gradient-colored text for use in Strafat usernames and chat.
 </p>
 
 <h3>Overview</h3>
