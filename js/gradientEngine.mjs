@@ -1,8 +1,13 @@
-import { hexToRgb, interpolateColor, rgbToHex } from "./gradient.mjs";
+import { hexToRgb, interpolateColor, normalizeHex, rgbToHex } from "./gradient.mjs";
 import { state } from "./state.mjs";
 
 function visible(text){
   return [...text].filter(c => c !== " ");
+}
+
+function palette(){
+  const colors = state.colors.length ? state.colors : ["#0F9", "#FF7A00"];
+  return colors.map(normalizeHex);
 }
 
 function getSteps(text, depth){
@@ -30,23 +35,46 @@ function factor(i, total, steps){
   return bucket / (steps - 1);
 }
 
-export function parts(text, depth){
-  const a = hexToRgb(state.c1);
-  const b = hexToRgb(state.c2);
+function getColorAtFactor(colors, t){
+  if(colors.length === 1) return colors[0];
 
+  const scaled = t * (colors.length - 1);
+  const leftIndex = Math.floor(scaled);
+  const rightIndex = Math.min(leftIndex + 1, colors.length - 1);
+  const localT = scaled - leftIndex;
+
+  if(leftIndex === rightIndex || localT === 0){
+    return colors[leftIndex];
+  }
+
+  const left = hexToRgb(colors[leftIndex]);
+  const right = hexToRgb(colors[rightIndex]);
+  const col = interpolateColor(left, right, localT);
+
+  return rgbToHex(col.r, col.g, col.b);
+}
+
+export function parts(text, depth){
   const chars = [...text];
   const vis = visible(text);
   const steps = getSteps(text, depth);
+  const colors = palette();
 
   let vi = 0;
 
   return chars.map(ch => {
     if(ch === " ") return { ch, hex: null };
 
-    const f = factor(vi, vis.length, steps);
-    const col = interpolateColor(a, b, f);
+    let hex;
 
-    const hex = rgbToHex(col.r, col.g, col.b);
+    if(colors.length >= steps){
+      const colorIndex = steps <= 1 ? 0 : Math.min(Math.floor(factor(vi, vis.length, steps) * (steps - 1)), steps - 1);
+      hex = colors[colorIndex];
+    } else {
+      const f = factor(vi, vis.length, steps);
+      hex = getColorAtFactor(colors, f);
+    }
+
     vi++;
 
     return { ch, hex };

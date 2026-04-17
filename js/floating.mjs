@@ -15,7 +15,8 @@ const assets = [
     "./assets/pngs/floating/SawedOff.png",
     "./assets/pngs/floating/Shotgun.png",
     "./assets/pngs/floating/Silenzio.png",
-    "./assets/pngs/floating/Stungrenade.png"
+    "./assets/pngs/floating/Stungrenade.png",
+    "./assets/pngs/floating/AboubiHeadWeapon.png"
 ];
 
 // track how many of each are active

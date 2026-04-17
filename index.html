@@ -59,30 +59,34 @@
     </div>
 
     <div class="gradient-bar" id="gradientBar">
-
-      <div class="gradient-handle left" id="zone1">
-        <div class="handle-inner">
-          <div class="handle-line"></div>
-          <div class="handle-hex" id="hex1">#FFFFFF</div>
-        </div>
-      </div>
-
-      <div class="gradient-handle right" id="zone2">
-        <div class="handle-inner">
-          <div class="handle-line"></div>
-          <div class="handle-hex" id="hex2">#FFFFFF</div>
-        </div>
-      </div>
-
+      <div class="gradient-handles" id="gradientHandles"></div>
     </div>
 
-    <div class="mode-group">
-      <button class="mode" data-mode="1">1</button>
-      <button class="mode" data-mode="2">1/2</button>
-      <button class="mode" data-mode="3">1/3</button>
-      <button class="mode" data-mode="4">1/4</button>
-      <button class="mode active" data-mode="5">Per Letter</button>
-      <button class="mode" data-mode="6">Custom</button>
+    <div class="gradient-toolbar" id="gradientToolbar"></div>
+
+    <div class="color-count-group" id="colorCountGroup">
+      <button class="color-count-btn" data-color-count="1">1 Color</button>
+      <button class="color-count-btn active" data-color-count="2">2 Colors</button>
+      <button class="color-count-btn" data-color-count="3">3 Colors</button>
+      <button class="color-count-btn" data-color-count="4">4 Colors</button>
+    </div>
+
+    <div class="intensity-panel" id="intensityPanel">
+      <button class="intensity-toggle" id="intensityToggle" type="button">
+        <span>Gradient Intensity Control</span>
+        <span class="intensity-current" id="intensityCurrent">Per Letter</span>
+      </button>
+
+      <div class="intensity-content hidden" id="intensityContent">
+        <div class="mode-group">
+          <button class="mode" data-mode="1">1</button>
+          <button class="mode" data-mode="2">1/2</button>
+          <button class="mode" data-mode="3">1/3</button>
+          <button class="mode" data-mode="4">1/4</button>
+          <button class="mode active" data-mode="5">Per Letter</button>
+          <button class="mode" data-mode="6">Custom</button>
+        </div>
+      </div>
     </div>
 
     <div class="slider-group hidden" id="sliderGroup">
@@ -101,29 +105,63 @@
 
     <div class="output-wrapper">
       <div id="outputDisplay"></div>
-      <div id="charCount" class="output-count">0 / 500</div>
+      <div id="charCount" class="output-count">
+        <span class="count-pill" id="totalCountPill">0 / 500</span>
+        <span class="count-pill steam" id="steamCountPill">0 / 32</span>
+      </div>
       <textarea id="output"></textarea>
+      <button id="autoCopyBtn" type="button">Auto Copy Off</button>
       <button id="copyBtn">Copy</button>
     </div>
 
     <div class="save-actions">
-      <button id="saveUserBtn">Save Username</button>
-      <button id="saveQuipBtn">Save Quip</button>
+      <button id="saveGradientBtn">Save Gradient</button>
+      <button id="saveQuipBtn">Save to Clipboard</button>
       <button id="removeModeBtn">Remove</button>
     </div>
 
     <div class="saved-sections">
-      <div class="saved-block">
-        <div class="saved-title">Usernames</div>
-        <div id="userList" class="saved-grid"></div>
+      <div class="saved-block saved-block-gradients">
+        <div class="saved-title">Saved Gradients</div>
+        <div id="gradientList" class="saved-grid"></div>
       </div>
 
-      <div class="saved-block">
-        <div class="saved-title">Quips</div>
+      <div class="saved-block saved-block-wide">
+        <div class="saved-title">Clipboard</div>
         <div id="quipList" class="saved-grid"></div>
       </div>
     </div>
 
+  </div>
+
+  <div class="preset-popup hidden" id="presetPopup">
+    <div class="preset-popup-card">
+      <div class="preset-popup-header">
+        <div class="preset-popup-heading">
+          <div class="preset-dock-title">Preset Gradients</div>
+          <div class="preset-dock-subtitle">Browse tabs, preview gradients, and save favorites.</div>
+        </div>
+        <button class="preset-close-btn" id="presetCloseBtn" type="button">&times;</button>
+      </div>
+      <div class="preset-categories" id="presetCategories"></div>
+      <div class="preset-browser" id="presetBrowser">
+        <div class="preset-themes" id="presetThemes"></div>
+        <div class="preset-detail" id="presetDetail">
+          <div class="preset-section-label">Preview</div>
+          <div class="preset-detail-hero">
+            <div class="preset-detail-preview" id="presetDetailPreview"></div>
+            <div class="preset-detail-overlay">
+              <div class="preset-detail-name" id="presetDetailName">Sunset</div>
+              <div class="preset-detail-colors" id="presetDetailColors"></div>
+            </div>
+          </div>
+          <div class="preset-detail-actions">
+            <button class="preset-favorite-btn" id="presetFavoriteBtn" type="button">Save Favorite</button>
+            <button class="preset-apply-btn" id="presetApplyBtn" type="button">Apply Preset</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div id="guideView" class="guide-view hidden">

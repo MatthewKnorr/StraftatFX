@@ -1,8 +1,10 @@
 import { getList, saveList } from "./storage.mjs";
 import { state } from "./state.mjs";
+import { normalizeHex } from "./gradient.mjs";
 
 function renderStyledText(raw){
   const wrapper=document.createElement("span");
+  wrapper.className="saved-text-content";
 
   let color="#fff";
   let bold=false;
@@ -10,7 +12,7 @@ function renderStyledText(raw){
   let underline=false;
   let superscript=false;
 
-  const regex=/<(#[0-9A-Fa-f]{6})>|<(\/?)(b|i|u|sup)>|(.)/g;
+  const regex=/<(#[0-9A-Fa-f]{3}(?:[0-9A-Fa-f]{3})?)>|<(\/?)(b|i|u|sup)>|(.)/g;
   let match;
 
   while((match=regex.exec(raw))){
@@ -43,80 +45,116 @@ function renderStyledText(raw){
   return wrapper;
 }
 
-function copy(text,label){
-  if(!text)return;
-  navigator.clipboard.writeText(text);
-
-  let t=document.querySelector(".toast");
-
-  if(!t){
-    t=document.createElement("div");
-    t.className="toast";
-    document.body.appendChild(t);
-  }
-
-  t.textContent=label;
-  t.classList.add("show");
-
-  setTimeout(()=>t.classList.remove("show"),1200);
+function gradientSignature(colors){
+  return colors.map(normalizeHex).join("|");
 }
 
-export function renderSaved(userList,quipList){
-  userList.innerHTML="";
-  quipList.innerHTML="";
+function renderGradient(colors){
+  const wrapper=document.createElement("div");
+  wrapper.className="saved-gradient";
 
-  const users=getList("gd-users");
+  const preview=document.createElement("div");
+  preview.className="saved-gradient-preview";
+  preview.style.background=colors.length===1
+    ? colors[0]
+    : `linear-gradient(90deg, ${colors.join(", ")})`;
+
+  const label=document.createElement("div");
+  label.className="saved-gradient-label";
+  label.textContent=`${colors.length} Color${colors.length===1?"":"s"}`;
+
+  wrapper.appendChild(preview);
+  wrapper.appendChild(label);
+
+  return wrapper;
+}
+
+function renderRemoveButton(onRemove){
+  const removeX=document.createElement("button");
+  removeX.innerHTML="&times;";
+  removeX.onclick=e=>{
+    e.stopPropagation();
+    onRemove();
+  };
+  return removeX;
+}
+
+export function renderSaved(quipList,gradientList,options={}){
+  const {
+    onApplyGradient=()=>({ ok:true }),
+    onGradientError=()=>{},
+    onAfterChange=()=>{}
+  }=options;
+
+  if(quipList) quipList.innerHTML="";
+  if(gradientList) gradientList.innerHTML="";
+
   const quips=getList("gd-quips");
+  const gradients=getList("gd-gradients");
 
-  users.forEach(u=>{
+  gradients.forEach(entry=>{
+    const colors=Array.isArray(entry?.colors) ? entry.colors : Array.isArray(entry) ? entry : [];
+    if(!colors.length) return;
+
     const item=document.createElement("div");
-    item.className="saved-item";
-    item.appendChild(renderStyledText(u));
+    item.className="saved-item saved-item-gradient";
+    item.appendChild(renderGradient(colors));
 
     if(state.removeMode){
-      const removeX=document.createElement("button");
-      removeX.textContent="×";
-
-      removeX.onclick=e=>{
-        e.stopPropagation();
-        saveList("gd-users",users.filter(x=>x!==u));
-        renderSaved(userList,quipList);
-      };
-
-      item.appendChild(removeX);
+      item.appendChild(renderRemoveButton(()=>{
+        saveList("gd-gradients",gradients.filter(x=>{
+          const entryColors=Array.isArray(x?.colors) ? x.colors : Array.isArray(x) ? x : [];
+          return gradientSignature(entryColors)!==gradientSignature(colors);
+        }));
+        renderSaved(quipList,gradientList,options);
+        onAfterChange();
+      }));
     }
 
     item.onclick=()=>{
       if(state.removeMode)return;
-      copy(u,"Username copied");
+
+      const result=onApplyGradient(colors);
+
+      if(result?.ok===false){
+        onGradientError(result.message || "Need more text for this gradient");
+      }
     };
 
-    userList.appendChild(item);
+    gradientList?.appendChild(item);
   });
 
   quips.forEach(q=>{
     const item=document.createElement("div");
-    item.className="saved-item";
+    item.className="saved-item saved-item-clipboard";
     item.appendChild(renderStyledText(q));
 
     if(state.removeMode){
-      const removeX=document.createElement("button");
-      removeX.textContent="×";
-
-      removeX.onclick=e=>{
-        e.stopPropagation();
+      item.appendChild(renderRemoveButton(()=>{
         saveList("gd-quips",quips.filter(x=>x!==q));
-        renderSaved(userList,quipList);
-      };
-
-      item.appendChild(removeX);
+        renderSaved(quipList,gradientList,options);
+        onAfterChange();
+      }));
     }
 
     item.onclick=()=>{
       if(state.removeMode)return;
-      copy(q,"Quip copied");
+      navigator.clipboard.writeText(q);
+
+      let t=document.querySelector(".toast");
+
+      if(!t){
+        t=document.createElement("div");
+        t.className="toast";
+        document.body.appendChild(t);
+      }
+
+      t.textContent="Clipboard copied";
+      t.classList.add("show");
+
+      setTimeout(()=>t.classList.remove("show"),1200);
     };
 
-    quipList.appendChild(item);
+    quipList?.appendChild(item);
   });
 }

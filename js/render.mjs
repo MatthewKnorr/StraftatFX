@@ -6,7 +6,7 @@ export function renderFormattedOutput(raw){
   let underline = false;
   let superscript = false;
 
-  const regex = /<(#?[0-9A-Fa-f]{6})>|<(\/?)(b|i|u|sup)>|(.)/g;
+  const regex = /<(#?[0-9A-Fa-f]{3}(?:[0-9A-Fa-f]{3})?)>|<(\/?)(b|i|u|sup)>|(.)/g;
   let match;
 
   while((match = regex.exec(raw))){
