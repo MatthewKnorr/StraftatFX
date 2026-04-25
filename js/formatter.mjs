@@ -1,31 +1,28 @@
+function wrapStyle(text, enabled, openTag, closeTag) {
+  if (!enabled) return text;
+  return `${openTag}${text}${closeTag}`;
+}
+
+function insertUnderlineInsideFirstColor(text) {
+  const colorTag = /(<#[0-9A-Fa-f]{3}(?:[0-9A-Fa-f]{3})?>)/;
+
+  if (!colorTag.test(text)) {
+    return `<u>${text}</u>`;
+  }
+
+  return `${text.replace(colorTag, "$1<u>")}</u>`;
+}
+
 export function applyStyles(text, { bold, italic, underline, superscript }) {
-  let open = "";
-  let close = "";
-
-  if (bold) {
-    open += "<b>";
-    close = "</b>" + close;
-  }
-  if (italic) {
-    open += "<i>";
-    close = "</i>" + close;
-  }
-  if (superscript) {
-    open += "<sup>";
-    close = "</sup>" + close;
-  }
-
-  let result = open + text + close;
+  let result = text;
 
   if (underline) {
-    const colorTag = /(<#[0-9A-Fa-f]{3}(?:[0-9A-Fa-f]{3})?>)/;
-    if (colorTag.test(result)) {
-      const bodyWithUnderline = (open + text).replace(colorTag, "$1<u>");
-      result = bodyWithUnderline + "</u>" + close;
-    } else {
-      result = "<u>" + result + "</u>";
-    }
+    result = insertUnderlineInsideFirstColor(result);
   }
+
+  result = wrapStyle(result, superscript, "<sup>", "</sup>");
+  result = wrapStyle(result, italic, "<i>", "</i>");
+  result = wrapStyle(result, bold, "<b>", "</b>");
 
   return result;
 }

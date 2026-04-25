@@ -386,11 +386,6 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function syncShortTextDefaults(text = input.value) {
     const visible = visibleCount(text);
-    const nextDesired = visible <= 1 ? 1 : 2;
-
-    if (visible <= 2 && desiredColorCount !== nextDesired) {
-      desiredColorCount = nextDesired;
-    }
 
     if (visible <= 2) {
       autoIntensityManaged = true;
@@ -537,10 +532,9 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function syncColorsToText(text = input.value) {
-    const maxAllowed = maxColorStops(text);
     const desired = activeColorCount(text);
 
-    updateColorCountButtons(maxAllowed);
+    updateColorCountButtons();
 
     paletteColors = ensurePaletteSize(desiredColorCount);
 
@@ -560,15 +554,11 @@ window.addEventListener("DOMContentLoaded", () => {
     document.documentElement.style.setProperty("--slider-gradient", g);
   }
 
-  function updateColorCountButtons(maxAllowed = maxColorStops()) {
-    const visible = visibleCount();
-
+  function updateColorCountButtons() {
     colorCountButtons.forEach(button => {
       const count = +button.dataset.colorCount;
-      const unavailable = count > maxAllowed;
-      const hidden = (count === 2 && visible <= 1) || (count >= 3 && unavailable);
-      button.disabled = unavailable;
-      button.classList.toggle("hidden-option", hidden);
+      button.disabled = false;
+      button.classList.remove("hidden-option");
       button.classList.toggle("active", count === desiredColorCount);
     });
   }
@@ -657,15 +647,8 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function applySavedGradient(colors) {
-    const visible = visibleCount();
-    const maxAllowed = maxColorStops(input.value);
-
     if (!input.value.trim()) {
       return { ok: false, message: `Type more text to use this ${colors.length}-color gradient` };
-    }
-
-    if (colors.length > visible || colors.length > maxAllowed) {
-      return { ok: false, message: `You need more text for this ${colors.length}-color gradient` };
     }
 
     desiredColorCount = colors.length;
@@ -680,7 +663,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function applyPresetGradient() {
     const preset = getActivePresetEntry();
-    if (!preset) return;
+    if (!preset) return false;
 
     if (!input.value.trim()) {
       input.value = preset.name;
@@ -691,10 +674,11 @@ window.addEventListener("DOMContentLoaded", () => {
 
     if (result?.ok === false) {
       showToast(result.message);
-      return;
+      return false;
     }
 
     showToast(`${preset.name} applied`);
+    return true;
   }
 
   async function loadPresetGradients() {
@@ -1028,7 +1012,9 @@ window.addEventListener("DOMContentLoaded", () => {
   };
 
   presetApplyBtn.onclick = () => {
-    applyPresetGradient();
+    if (applyPresetGradient()) {
+      presetPopup.classList.add("hidden");
+    }
   };
 
   presetFavoriteBtn.onclick = () => {
