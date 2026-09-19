@@ -3,8 +3,16 @@
 
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101310">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="StraftatFX">
   <title>StraftatFX</title>
   <link rel="icon" href="./assets/icons/favicon.ico" type="image/x-icon">
+  <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png">
+  <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./styles/styles.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css">
   <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr"></script>
@@ -12,20 +20,17 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
 
 <!-- GOOGLE ANALYTICS -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-KFPSZWPXQH"></script>
-
 <script>
-  window.dataLayer = window.dataLayer || [];
-
-  function gtag(){ dataLayer.push(arguments); }
-
-  window.gtag = gtag;
-
-  gtag('js', new Date());
-
-  gtag('config', 'G-KFPSZWPXQH', {
-    debug_mode: true
-  });
+  if (location.protocol === 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) {
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () { window.dataLayer.push(arguments); };
+    const analytics = document.createElement('script');
+    analytics.async = true;
+    analytics.src = 'https://www.googletagmanager.com/gtag/js?id=G-KFPSZWPXQH';
+    document.head.appendChild(analytics);
+    window.gtag('js', new Date());
+    window.gtag('config', 'G-KFPSZWPXQH');
+  }
 </script>
 </head>
 
@@ -46,38 +51,22 @@
         <img src="./assets/pngs/logo.png" class="logo">
         <span class="logo-tooltip">CLICK ME -></span>
       </div>
-      <h1>StraftatFX<span class="version-mark">v.3</span></h1>
+      <h1>StraftatFX<span class="version-mark">v.4</span></h1>
 
       <div class="header-actions">
-        <button id="openGuide" class="guide-btn">
-          <span id="guideBtnText">Guide</span>
+        <button id="openGuide" class="guide-btn" type="button" aria-label="Guide">
+          <i class="fa-solid fa-book-open" aria-hidden="true"></i>
+          <span id="guideBtnText" class="header-action-label">Guide</span>
         </button>
-        <a href="https://github.com/MatthewKnorr/StraftatFX" target="_blank" class="github-link">
-          <i class="fa-brands fa-github"></i>
+        <a class="feedback-link" href="https://docs.google.com/forms/d/e/1FAIpQLSekW0elfyD3XSpt5MwzraT_qFI-e3QbgWdTO0WIl-MGH949qg/viewform?usp=sharing&ouid=115826567347856675529" target="_blank" rel="noopener noreferrer" aria-label="Feedback"><i class="fa-regular fa-comment" aria-hidden="true"></i><span class="header-action-label">Feedback</span></a>
+        <a href="https://github.com/MatthewKnorr/StraftatFX" target="_blank" class="github-link" aria-label="GitHub" rel="noopener noreferrer">
+          <i class="fa-brands fa-github" aria-hidden="true"></i><span class="header-action-label">GitHub</span>
         </a>
       </div>
     </div>
 
     <div class="input-wrap">
       <input id="textInput" placeholder="Type Here...">
-    </div>
-
-    <div class="random-quips" id="randomQuips" aria-live="polite">
-      <div class="random-quips-header">
-        <span>Verbal Arsenal</span>
-        <div class="random-quips-actions">
-          <button id="refreshQuipsBtn" class="hidden" type="button" aria-label="Randomize verbal arsenal" title="Randomize verbal arsenal">
-            <i class="fa-solid fa-shuffle"></i>
-          </button>
-          <button id="toggleQuipsBtn" class="quip-caret-btn" type="button" aria-label="Expand verbal arsenal" aria-expanded="false">
-            <i class="fa-solid fa-caret-down"></i>
-          </button>
-        </div>
-      </div>
-      <div class="random-quips-body hidden" id="randomQuipsBody">
-        <div class="random-quips-categories" id="randomQuipCategories" aria-label="Random gamer text categories"></div>
-        <div class="random-quips-list" id="randomQuipsList"></div>
-      </div>
     </div>
 
     <div id="charWarning" class="char-warning hidden">
@@ -88,10 +77,6 @@
       <div class="gradient-handles" id="gradientHandles"></div>
     </div>
 
-    <div class="recent-gradients hidden" id="recentGradients" aria-label="Recent gradients"></div>
-
-    <div class="gradient-toolbar" id="gradientToolbar"></div>
-
     <div class="color-count-group" id="colorCountGroup">
       <button class="color-count-btn" data-color-count="1">1 Color</button>
       <button class="color-count-btn active" data-color-count="2">2 Colors</button>
@@ -99,42 +84,89 @@
       <button class="color-count-btn" data-color-count="4">4 Colors</button>
     </div>
 
-    <div class="advanced-panel" id="advancedPanel">
-      <button class="advanced-toggle" id="advancedToggle" type="button">
-        <span>Advanced Controls</span>
-        <span class="intensity-current" id="advancedCurrent">Closed</span>
-      </button>
+    <div class="recent-gradients hidden" id="recentGradients"></div>
 
-      <div class="advanced-content hidden" id="advancedContent">
+    <div class="gradient-toolbar" id="gradientToolbar"></div>
+
+
+    <div id="preview"></div>
+
+    <div class="output-wrapper">
+      <div id="outputDisplay"></div>
+      <div id="charCount" class="output-count">
+        <span class="count-pill" id="totalCountPill">0 / 500</span>
+        <span class="count-pill steam" id="steamCountPill">0 / 32</span>
+      </div>
+      <textarea id="output"></textarea>
+      <button id="autoCopyBtn" type="button">Auto Copy Off</button>
+      <button id="copyBtn">Copy</button>
+    </div>
+
+    <div class="save-actions">
+      <button id="saveGradientBtn" type="button"><i class="fa-solid fa-plus save-action-plus" aria-hidden="true"></i><span>Save Color Gradient</span></button>
+      <button id="saveQuipBtn" type="button"><i class="fa-solid fa-plus save-action-plus" aria-hidden="true"></i><span>Save to Phrases</span></button>
+    </div>
+
+    <div class="saved-sections">
+      <div class="saved-block saved-block-wide verbal-arsenal">
+        <div class="arsenal-heading">
+          <div><div class="saved-title">Phrases</div><p>Your saved text, ready to copy.</p></div>
+          <button id="removeModeBtn" class="arsenal-remove-mode" type="button"><i class="fa-solid fa-trash" aria-hidden="true"></i><span>Remove</span></button>
+        </div>
+        <div id="quipList" class="saved-grid"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <aside class="editor-drawer advanced-drawer" id="advancedDrawer" aria-labelledby="advancedDrawerTitle" aria-hidden="true" inert>
+    <header class="preset-drawer-header">
+      <div><h2 id="advancedDrawerTitle">Advanced Controls</h2><p>Text effects and gradient settings.</p></div>
+      <button class="preset-close-btn" id="advancedCloseBtn" type="button" aria-label="Close advanced controls">&times;</button>
+    </header>
+      <div class="advanced-content" id="advancedContent">
         <div class="advanced-tabs" role="tablist" aria-label="Advanced controls">
-          <button class="advanced-tab active" data-advanced-tab="text" type="button" role="tab" aria-selected="true">TEXT EFFECTS</button>
-          <button class="advanced-tab" data-advanced-tab="gradient" type="button" role="tab" aria-selected="false">GRADIENT CONTROLS</button>
+          <button class="advanced-tab active" data-advanced-tab="styles" type="button" role="tab" aria-selected="true">Styles</button>
+          <button class="advanced-tab" data-advanced-tab="spacing" type="button" role="tab" aria-selected="false">Layout</button>
+          <button class="advanced-tab" data-advanced-tab="gradient" type="button" role="tab" aria-selected="false">Gradient Control</button>
+          <button class="advanced-tab" data-advanced-tab="text" type="button" role="tab" aria-selected="false">Text Effects</button>
         </div>
 
-        <div class="advanced-tab-panel" data-advanced-panel="text" role="tabpanel">
-          <div class="effects-panel" id="effectsPanel">
-            <div class="effects-header">
-              <button class="intensity-toggle effects-toggle open" id="effectsToggle" type="button">
-                <span>Text Effects</span>
-                <span class="intensity-current" id="effectsCurrent">Off</span>
-              </button>
-              <button class="effects-reset-btn" id="effectsResetBtn" type="button" aria-label="Reset rich text effects" title="Reset rich text effects">
-                <i class="fa-solid fa-rotate-left"></i>
-              </button>
-            </div>
+        <div class="advanced-tab-panel hidden" data-advanced-panel="text" role="tabpanel">
+          <section class="selection-editor" id="selectionEditor" aria-label="Selected text formatting"></section>
 
-            <div class="effects-content" id="effectsContent">
+
+          <button class="tab-reset-btn" data-reset-tab="text" type="button" aria-label="Reset Text Effects" title="Reset Text Effects"><i class="fa-solid fa-arrow-rotate-left" aria-hidden="true"></i></button>
+        </div>
+
+        <div class="advanced-tab-panel" data-advanced-panel="styles" role="tabpanel">
+              <div class="effects-section">
+                <div class="effects-section-title">Whole-message styles</div>
+                <div class="effects-grid">
+
+                  <label class="effect-control"><span>Style</span><select id="namedStyle"><option value="">Normal</option><option>Title</option><option>H1</option><option>H2</option></select></label>
+                  <label class="effect-control"><span>Font</span><select id="fontEffect"><option value="">Default</option><option value="LiberationSans SDF">Liberation Sans SDF</option></select></label>
+                </div>
+                <p class="selection-help">Liberation Sans uses the bundled font. Named styles and game rendering may differ from this preview.</p>
+              </div>
               <div class="effects-section effects-section-style">
                 <div class="effects-section-title">Style</div>
                 <div class="effects-inline-row" aria-label="Text style toggles">
                   <label class="effect-control inline-effect"><span>Bold</span><input type="checkbox" id="bold"><b>B</b></label>
                   <label class="effect-control inline-effect"><span>Italic</span><input type="checkbox" id="italic"><b><i>I</i></b></label>
                   <label class="effect-control inline-effect"><span>Underline</span><input type="checkbox" id="underline"><b><u>U</u></b></label>
-                  <label class="effect-control inline-effect"><span>Strike</span><input type="checkbox" id="strike"><b><s>S</s></b></label>
-                  <label class="effect-control inline-effect"><span>Sup</span><input type="checkbox" id="superscript"><b>Sup</b></label>
-                  <label class="effect-control inline-effect"><span>Sub</span><input type="checkbox" id="subscript"><b>Sub</b></label>
+                  <label class="effect-control inline-effect"><span>Strikethrough</span><input type="checkbox" id="strike"><b><s>S</s></b></label>
                 </div>
+              </div>
+              <div class="effects-section">
                 <div class="effects-grid style-options-row">
+                  <div class="effect-control">
+                    <span>Sup / Sub</span>
+                    <div class="effects-option-row script-option-row" role="group" aria-label="Superscript or subscript">
+                      <label class="effect-control inline-effect"><span>Sup</span><input type="checkbox" id="superscript"><b>Sup</b></label>
+                      <label class="effect-control inline-effect"><span>Sub</span><input type="checkbox" id="subscript"><b>Sub</b></label>
+                    </div>
+                  </div>
                   <div class="effect-control">
                     <span>Case</span>
                     <input type="hidden" id="caseEffect">
@@ -143,6 +175,7 @@
                       <button type="button" class="option-effect" data-option-target="caseEffect" data-option-value="uppercase">Uppercase</button>
                     </div>
                   </div>
+
                   <div class="effect-control">
                     <span>Align</span>
                     <input type="hidden" id="align">
@@ -152,40 +185,51 @@
                       <button type="button" class="option-effect" data-option-target="align" data-option-value="right">Right</button>
                     </div>
                   </div>
+
+                  <div class="effect-control true-random-control randomfx-section">
+                    <span>RandomFx</span>
+                    <input type="hidden" id="trueRandomEffects">
+                    <div class="effects-option-row true-random-row" aria-label="RandomFx text effects">
+                      <button type="button" class="option-effect" data-option-target="trueRandomEffects" data-option-value="on"><span class="randomfx-label">RandomFx</span></button>
+                      <button type="button" id="trueRandomRerollBtn" class="setting-toggle">Reroll</button>
+                      <button type="button" id="clearFxBtn" class="setting-toggle">Clear FX</button>
+                    </div>
+                  </div>
                 </div>
               </div>
+          <button class="tab-reset-btn" data-reset-tab="styles" type="button" aria-label="Reset Styles" title="Reset Styles"><i class="fa-solid fa-arrow-rotate-left" aria-hidden="true"></i></button>
+        </div>
 
+        <div class="advanced-tab-panel hidden" data-advanced-panel="spacing" role="tabpanel">
               <div class="effects-section">
-                <div class="effects-section-title">Spacing</div>
+                <div class="effects-section-title">Scale &amp; Spacing</div>
                 <div class="effects-grid">
-                  <label class="effect-control"><span>letter spacing</span><input type="number" id="cspace" step="1" min="-80" max="80" placeholder="px"></label>
-                  <label class="effect-control"><span>fixed width</span><input type="number" id="mspace" step="1" min="0" max="80" placeholder="px"></label>
+                  <label class="effect-control"><span>scale (&times;)</span><input id="textScale" type="number" min="0.01" max="3" step="0.01" placeholder="1.00" aria-label="Text scale"></label>
+                  <label class="effect-control"><span>letter spacing (px)</span><input type="number" id="cspace" step="1" min="-80" max="80" placeholder="px"></label>
+                  <label class="effect-control"><span>fixed width (px)</span><input type="number" id="mspace" step="1" min="0" max="80" placeholder="px"></label>
                 </div>
               </div>
-
               <div class="effects-section">
                 <div class="effects-section-title">Layout</div>
                 <div class="effects-grid effects-grid-dense">
-                  <label class="effect-control"><span>position</span><input type="number" id="pos" step="1" min="-500" max="500" placeholder="px"></label>
-                  <label class="effect-control"><span>width</span><input type="number" id="widthEffect" step="1" min="1" max="100" placeholder="%"></label>
-                  <label class="effect-control"><span>rotate</span><input type="number" id="rotate" step="1" min="-360" max="360" placeholder="deg"></label>
-                  <label class="effect-control"><span>vertical offset</span><input type="number" id="voffset" step="0.1" min="-5" max="5" placeholder="em"></label>
+                  <label class="effect-control"><span>position (px)</span><input type="number" id="pos" step="1" min="-500" max="500" placeholder="px"></label>
+                  <label class="effect-control"><span>width (%)</span><input type="number" id="widthEffect" step="1" min="1" max="100" placeholder="%"></label>
+                  <label class="effect-control"><span>rotate (deg)</span><input type="number" id="rotate" step="1" min="-360" max="360" placeholder="deg"></label>
+                  <label class="effect-control"><span>vertical offset (em)</span><input type="number" id="voffset" step="0.1" min="-5" max="5" placeholder="em"></label>
                 </div>
               </div>
-            </div>
-          </div>
+          <button class="tab-reset-btn" data-reset-tab="spacing" type="button" aria-label="Reset Layout" title="Reset Layout"><i class="fa-solid fa-arrow-rotate-left" aria-hidden="true"></i></button>
         </div>
 
         <div class="advanced-tab-panel hidden" data-advanced-panel="gradient" role="tabpanel">
+
           <div class="intensity-panel" id="intensityPanel">
             <div class="effects-header gradient-controls-header">
               <button class="intensity-toggle open" id="intensityToggle" type="button">
                 <span>Gradient Intensity Control</span>
                 <span class="intensity-current" id="intensityCurrent">Per Letter</span>
               </button>
-              <button class="effects-reset-btn" id="gradientResetBtn" type="button" aria-label="Reset gradient controls" title="Reset gradient controls">
-                <i class="fa-solid fa-rotate-left"></i>
-              </button>
+
             </div>
 
             <div class="intensity-content" id="intensityContent">
@@ -207,87 +251,79 @@
 
           <div class="temperature-panel">
             <label for="temperatureSlider">
-              <span>Temperature</span>
-              <span id="temperatureValue">Mixed</span>
+              <span>Clean temperature</span>
+              <span id="temperatureValue">Balanced</span>
             </label>
-            <input type="range" id="temperatureSlider" min="-100" max="100" value="0">
+            <input type="range" id="temperatureSlider" min="-100" max="100" value="0" aria-describedby="temperatureHelp">
             <div class="temperature-scale" aria-hidden="true">
               <span>Cool</span>
-              <span>Mixed</span>
-              <span>Warm</span>
+              <span>Balanced</span>
+              <span>Hot</span>
+            </div>
+            <p id="temperatureHelp" class="selection-help">Applies to the next Clean shuffle, including selection gradients. Presets and locked colors keep their original colors. Random uses all temperatures.</p>
+          </div>
+
+          <div class="generator-mode-panel">
+            <div class="effects-section-title">Color Generator</div>
+            <div class="generator-mode-group" aria-label="Color generator mode">
+              <button class="generator-mode-btn active" data-generator-mode="clean" type="button" aria-pressed="true">Clean Gradient</button>
+              <button class="generator-mode-btn" data-generator-mode="random" type="button" aria-pressed="false">Random Gradient</button>
             </div>
           </div>
+
+
+
+          <button class="tab-reset-btn" id="gradientResetBtn" type="button" aria-label="Reset Gradient Controls" title="Reset Gradient Controls"><i class="fa-solid fa-arrow-rotate-left" aria-hidden="true"></i></button>
         </div>
       </div>
+  <section id="effectsDock" class="effects-dock" aria-label="Text effects manager">
+    <div id="effectsContent" class="effects-dock-panel hidden" role="region" aria-label="Active effects">
+      <div class="effects-dock-heading"><strong>Active effects</strong><button id="effectsCloseBtn" type="button" aria-label="Close effects manager">&times;</button></div>
+      <p>Click an effect to remove it.</p>
+      <div id="activeEffectList" class="active-effect-list"></div>
+      <button id="effectsResetBtn" class="effects-clear-all" type="button">Clear all effects</button>
     </div>
+    <div class="effects-dock-actions">
+    <button id="effectsToggle" class="effects-dock-toggle" type="button" aria-expanded="false" aria-controls="effectsContent">
+      <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+      <span><strong>Active Effects</strong><span id="effectsCurrent" aria-live="polite">Off</span></span>
+      <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>
+    </button>
+    </div>
+  </section>
+  </aside>
 
-    <div id="preview"></div>
-
-    <div class="output-wrapper">
-      <div id="outputDisplay"></div>
-      <div id="charCount" class="output-count">
-        <span class="count-pill" id="totalCountPill">0 / 500</span>
-        <span class="count-pill steam" id="steamCountPill">0 / 32</span>
+  <aside class="editor-drawer preset-drawer" id="presetDrawer" aria-labelledby="presetDrawerTitle" aria-hidden="true" inert>
+    <header class="preset-drawer-header">
+      <div><h2 id="presetDrawerTitle">Preset &amp; Saved Gradients</h2><p>Hover to preview. Click to apply.</p></div>
+      <button class="preset-close-btn" id="presetCloseBtn" type="button" aria-label="Close preset gradients">&times;</button>
+    </header>
+    <div class="preset-categories" id="presetCategories" aria-label="Preset categories"></div>
+    <div class="preset-themes" id="presetThemes" aria-label="Presets"></div>
+    <footer class="preset-drawer-footer">
+      <div id="presetSelectionName" aria-live="polite">No preset selected</div>
+      <div class="preset-actions">
+        <button id="presetRandomBtn" class="preset-action-btn" type="button" aria-label="Apply a random preset from the current category" title="Apply a random preset from this category"><i class="fa-solid fa-shuffle" aria-hidden="true"></i><span>Apply random</span></button>
+        <button class="preset-action-btn preset-favorite-btn" id="presetFavoriteBtn" type="button" aria-pressed="false"><i class="fa-regular fa-star" aria-hidden="true"></i><span>Save Favorite</span></button>
       </div>
-      <textarea id="output"></textarea>
-      <button id="autoCopyBtn" type="button">Auto Copy Off</button>
-      <button id="copyBtn">Copy</button>
-    </div>
-
-    <div class="save-actions">
-      <button id="saveGradientBtn">Save Gradient</button>
-      <button id="saveQuipBtn">Save to Clipboard</button>
-      <button id="removeModeBtn">Remove</button>
-      <a class="feedback-link" href="https://docs.google.com/forms/d/e/1FAIpQLSekW0elfyD3XSpt5MwzraT_qFI-e3QbgWdTO0WIl-MGH949qg/viewform?usp=sharing&ouid=115826567347856675529" target="_blank" rel="noopener noreferrer">Feedback</a>
-    </div>
-
-    <div class="saved-sections">
-      <div class="saved-block saved-block-wide">
-        <div class="saved-title">Clipboard</div>
-        <div id="quipList" class="saved-grid"></div>
-      </div>
-    </div>
-
-  </div>
-
-  <div class="preset-popup hidden" id="presetPopup">
-    <div class="preset-popup-card">
-      <div class="preset-popup-header">
-        <div class="preset-popup-heading">
-          <div class="preset-dock-title">Preset Gradients</div>
-          <div class="preset-dock-subtitle">Browse tabs, preview gradients, and save favorites.</div>
-        </div>
-        <button class="preset-close-btn" id="presetCloseBtn" type="button">&times;</button>
-      </div>
-      <div class="preset-categories" id="presetCategories"></div>
-      <div class="preset-browser" id="presetBrowser">
-        <div class="preset-themes" id="presetThemes"></div>
-        <div class="preset-detail" id="presetDetail">
-          <div class="preset-section-label">Preview</div>
-          <div class="preset-detail-hero">
-            <div class="preset-detail-preview" id="presetDetailPreview"></div>
-            <div class="preset-detail-overlay">
-              <div class="preset-detail-name" id="presetDetailName">Sunset</div>
-              <div class="preset-detail-colors" id="presetDetailColors"></div>
-            </div>
-          </div>
-          <div class="preset-detail-actions">
-            <button class="preset-favorite-btn" id="presetFavoriteBtn" type="button">Save Favorite</button>
-            <button class="preset-apply-btn" id="presetApplyBtn" type="button">Apply Preset</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+    </footer>
+  </aside>
 
   <div id="guideView" class="guide-view hidden">
     <div class="guide-content">
-      <button id="closeGuide" class="close-guide">×</button>
+      <button id="closeGuide" class="close-guide" aria-label="Close guide">&times;</button>
       <div id="guideMount"></div>
     </div>
   </div>
 
+
+
   <script type="module" src="./js/main.mjs"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"));
+    }
+  </script>
 </body>
 
 </html>

@@ -1,3 +1,18 @@
+export function compactOutput(text) {
+  const active = new Map();
+  return String(text).replace(/<([^>]+)>/g, (tag, body) => {
+    if (body.startsWith('/')) return '';
+    const [name] = body.split('=');
+    const key = body.startsWith('#') ? 'color' : name.toLowerCase();
+    // These tags insert content or move the cursor each time they occur.
+    if (['space', 'br', 'page', 'pos'].includes(key)) return tag;
+    const value = body.toLowerCase();
+    if (active.get(key) === value) return '';
+    active.set(key, value);
+    return tag;
+  });
+}
+
 function wrapStyle(text, enabled, openTag, closeTag) {
   if (!enabled) return text;
   return `${openTag}${text}${closeTag}`;
@@ -35,9 +50,15 @@ function clampEm(value, min, max) {
   return +number.toFixed(2);
 }
 
+function pastedRotate(value) {
+  const number = clampNumber(value, -360, 360);
+  if (number === "") return "";
+  return Object.is(number, -0) ? 0 : number;
+}
+
 export function applyStyles(text, effects = {}) {
   let result = text;
-  const caseTags = new Set(["smallcaps", "lowercase"]);
+  const caseTags = new Set(["smallcaps", "lowercase", "uppercase"]);
 
   if (effects.underline) {
     result = insertUnderlineInsideFirstColor(result);
@@ -46,7 +67,7 @@ export function applyStyles(text, effects = {}) {
   result = wrapStyle(result, hasValue(effects.space), `<space=${clampEm(effects.space, 0, 32)}em>`, "");
   result = wrapStyle(result, effects.markEnabled, `<mark=${effects.mark || "#FFFF00"}>`, "</mark>");
   result = wrapStyle(result, hasValue(effects.voffset), `<voffset=${clampNumber(effects.voffset, -5, 5)}em>`, "</voffset>");
-  result = wrapStyle(result, hasValue(effects.rotate), `<rotate=${clampNumber(effects.rotate, -360, 360)}>`, "</rotate>");
+  result = wrapStyle(result, hasValue(effects.rotate), `<rotate=${pastedRotate(effects.rotate)}>`, "</rotate>");
   result = wrapStyle(result, hasValue(effects.lineHeight), `<line-height=${clampNumber(effects.lineHeight, 1, 300)}%>`, "</line-height>");
   result = wrapStyle(result, hasValue(effects.width), `<width=${clampNumber(effects.width, 1, 100)}%>`, "</width>");
   result = wrapStyle(result, hasValue(effects.margin), `<margin=${clampNumber(effects.margin, 0, 500)}>`, "</margin>");
@@ -62,6 +83,9 @@ export function applyStyles(text, effects = {}) {
   result = wrapStyle(result, effects.strike, "<s>", "</s>");
   result = wrapStyle(result, effects.italic, "<i>", "</i>");
   result = wrapStyle(result, effects.bold, "<b>", "</b>");
+  result = wrapStyle(result, hasValue(effects.size), `<size=${clampNumber(effects.size, 1, 300)}%>`, "</size>");
+  result = wrapStyle(result, effects.font === "LiberationSans SDF", '<font="LiberationSans SDF">', "</font>");
+  result = wrapStyle(result, ["Title", "H1", "H2"].includes(effects.namedStyle), `<style="${effects.namedStyle}">`, "</style>");
 
   return result;
 }

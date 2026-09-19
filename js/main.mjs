@@ -1,23 +1,22 @@
-import { build, parts } from "./gradientEngine.mjs";
-import { renderFormattedOutput, renderPreview } from "./render.mjs";
-import { renderSaved } from "./saved.mjs";
-import { getList, saveList } from "./storage.mjs";
-import { state } from "./state.mjs";
-import { applyStyles } from "./formatter.mjs";
-import { initGuide } from "./guide.mjs";
-import { initLogoAudio } from "./logoAudio.mjs";
+import { bindRandomFxHover } from "./randomFxFeedback.mjs";
 import { initFloating } from "./floating.mjs";
-import { hexToRgb, normalizeHex } from "./gradient.mjs";
+import { shufflePresets } from "./presetOrder.mjs";
+import { initLogoAudio } from "./logoAudio.mjs";
+import { initGuide } from "./guide.mjs";
+import { applyStyles, compactOutput } from "./formatter.mjs";
+import { getList, saveList, state } from "./state.mjs";
+import { renderSaved } from "./saved.mjs";
+import { renderFormattedOutput, renderRichPreview } from "./render.mjs";
+import { generateCleanColors, build, parts, compactHexTag, normalizeHex, fitPaletteToCount } from "./gradient.mjs";
+import { initSelectionEditor } from "./selectionEditor.mjs";
 
 window.addEventListener("DOMContentLoaded", () => {
   const el = id => document.getElementById(id);
 
   const input = el("textInput");
-  const randomQuipsBody = el("randomQuipsBody");
-  const randomQuipsList = el("randomQuipsList");
-  const randomQuipCategories = el("randomQuipCategories");
-  const toggleQuipsBtn = el("toggleQuipsBtn");
-  const refreshQuipsBtn = el("refreshQuipsBtn");
+  const namedStyle = el("namedStyle");
+  const fontEffect = el("fontEffect");
+  let selectionModel = null;
   const output = el("output");
   const preview = el("preview");
   const outputDisplay = el("outputDisplay");
@@ -29,9 +28,6 @@ window.addEventListener("DOMContentLoaded", () => {
   const colorCountButtons = [...document.querySelectorAll(".color-count-btn")];
   const advancedTabs = [...document.querySelectorAll(".advanced-tab")];
   const advancedTabPanels = [...document.querySelectorAll(".advanced-tab-panel")];
-  const advancedToggle = el("advancedToggle");
-  const advancedContent = el("advancedContent");
-  const advancedCurrent = el("advancedCurrent");
   const temperatureSlider = el("temperatureSlider");
   const temperatureValue = el("temperatureValue");
   const themeModeButtons = [...document.querySelectorAll(".theme-mode")];
@@ -40,13 +36,14 @@ window.addEventListener("DOMContentLoaded", () => {
   const intensityCurrent = el("intensityCurrent");
   const presetCategories = el("presetCategories");
   const presetThemes = el("presetThemes");
-  const presetDetail = el("presetDetail");
-  const presetDetailName = el("presetDetailName");
-  const presetDetailPreview = el("presetDetailPreview");
-  const presetDetailColors = el("presetDetailColors");
   const presetFavoriteBtn = el("presetFavoriteBtn");
-  const presetApplyBtn = el("presetApplyBtn");
-  const presetPopup = el("presetPopup");
+  const advancedDrawer = el("advancedDrawer");
+  const advancedCloseBtn = el("advancedCloseBtn");
+  const presetDrawer = el("presetDrawer");
+  const presetSelectionName = el("presetSelectionName");
+  let hoveredPresetColors = null;
+  let recentPreviewActive = false;
+  const RECENT_GRADIENT_LIMIT = 7;
   const presetCloseBtn = el("presetCloseBtn");
 
   const bold = el("bold");
@@ -89,15 +86,19 @@ window.addEventListener("DOMContentLoaded", () => {
   const saveQuipBtn = el("saveQuipBtn");
   const removeModeBtn = el("removeModeBtn");
 
-  const gradientList = null;
   const quipList = el("quipList");
 
   const copyBtn = el("copyBtn");
   const autoCopyBtn = el("autoCopyBtn");
+  const trueRandomEffects = el("trueRandomEffects");
+  const trueRandomRerollBtn = el("trueRandomRerollBtn");
+  const generatorModeButtons = [...document.querySelectorAll(".generator-mode-btn")];
 
   const randomBtn = document.createElement("button");
   const swapBtn = document.createElement("button");
+  const rotateBtn = document.createElement("button");
   const presetBtn = document.createElement("button");
+  const advancedBtn = document.createElement("button");
   let pickrs = [];
   let desiredColorCount = 2;
   let paletteColors = [];
@@ -109,30 +110,58 @@ window.addEventListener("DOMContentLoaded", () => {
   let activePresetKey = "";
   let colorTemperature = +(localStorage.getItem("gd-color-temperature") || 0);
   let activeThemeMode = localStorage.getItem("gd-theme-mode") || "dark";
+  let generatorMode = ["random", "true-random"].includes(localStorage.getItem("gd-generator-mode")) ? "random" : "clean";
+  let randomEffectPlan = [];
+  let removeModeExitTimer = 0;
   const favoritePresetCategory = "Favorites";
-  const userPresetCategory = "User Created";
-  const gamerQuipCategories = {
-    gg: ["gg", "ggs", "good round", "well played", "wp", "solid game", "run it back", "one more", "last game fr", "we're back", "comeback time"],
-    ez: ["ez", "gg ez", "get stomped", "sit", "skill issue", "outplayed", "deleted", "cooked", "fried", "smoked", "rolled", "washed", "dogwater", "free", "too free", "hold that", "stay mad", "cope", "sent to lobby", "back to lobby", "lobby speedrun", "actual npc", "bot behavior"],
-    niceShot: ["nice shot", "nice try", "nt", "that was nasty", "clean", "dirty", "filthy", "sheesh", "insane", "one tap", "beamed", "lasered", "melted", "cracked", "clipped", "squad wipe", "team wipe", "ace", "clutch", "ice in veins", "calculated", "big brain", "clip that"],
-    comms: ["behind you", "on me", "push push", "full send", "send it", "rotate", "reset", "play slow", "flank", "third party", "RUN", "help", "he's one", "literally one", "I lied", "reloading", "no ammo", "peek me", "don't peek", "focus up", "lock in"],
-    reactions: ["sad", "woah", "lmao", "no way", "WHAT", "tf", "bruh", "nahhh", "yikes", "rip", "unlucky", "tragic", "not like this", "ain't no way", "no shot", "goofy", "bro thought", "almost", "I'm dead", "I'm cooked", "we're cooked", "chalked", "hit reg?", "how did that miss", "how did that hit"],
-    memes: ["I'm him", "you're not him", "built different", "throwing", "hard throwing", "sold", "my bad", "mb", "carry me", "team diff", "aim diff", "brain diff", "ping diff", "rank diff", "massive W", "big L", "caught lacking", "bro got erased", "jump scare", "tryhard", "sweat lobby", "bot lobby", "final boss", "side quest", "main character", "plot armor", "robbed", "scammed", "let me cook", "stop cooking", "we ball", "we do not ball", "vibes gone", "vibes restored", "absolute cinema", "peak gaming", "delete the clip", "never happened", "zero IQ", "aimbot", "reported", "walls?", "sus", "nerf him", "buff me", "OP", "broken", "balanced btw", "go next", "next", "it's over"]
-  };
-  const gamerQuipCategoryLabels = {
-    all: "All",
-    gg: "GG",
-    ez: "EZ",
-    niceShot: "Nice Shot",
-    comms: "Comms",
-    reactions: "Reacts",
-    memes: "Memes"
-  };
-  const requiredQuipCategories = ["gg", "ez", "niceShot"];
-  let activeQuipCategory = "all";
+  const userPresetCategory = "Saved Gradients";
+  function readStoredLocks() {
+    try {
+      const stored = JSON.parse(localStorage.getItem("gd-color-locks") || "[]");
+      return Array.isArray(stored) ? stored.map(Boolean) : [];
+    } catch {
+      return [];
+    }
+  }
 
-  function stripClosingTags(text) {
-    return text.replace(/<\/(b|i|u|s|sup|sub|allcaps|uppercase|smallcaps|lowercase|cspace|mspace|align|pos|indent|line-indent|margin|width|line-height|rotate|voffset|mark|alpha|size|font-weight)>/g, "");
+  function persistColorLocks() {
+    localStorage.setItem("gd-color-locks", JSON.stringify(state.colorLocks.slice(0, 4)));
+  }
+
+  function syncColorLocks() {
+    const current = Array.isArray(state.colorLocks) ? state.colorLocks : [];
+    state.colorLocks = Array.from({ length: 4 }, (_, index) => Boolean(current[index]));
+    persistColorLocks();
+    updateGradientResetState();
+  }
+
+  function isColorLocked(index) {
+    return Boolean(state.colorLocks[index]);
+  }
+
+  function anyActiveColorLocked(count = activeColorCount()) {
+    return state.colorLocks.slice(0, count).some(Boolean);
+  }
+
+  function toggleColorLock(index) {
+    syncColorLocks();
+    state.colorLocks[index] = !state.colorLocks[index];
+    persistColorLocks();
+    renderColorHandles();
+    updateGradientResetState();
+    showToast(state.colorLocks[index] ? "Color locked" : "Color unlocked");
+  }
+
+  function isTrueRandomEffectsEnabled() {
+    return trueRandomEffects?.value === "on";
+  }
+
+  function resetRandomEffectPlan() {
+    randomEffectPlan = [];
+  }
+
+  function getCopyText() {
+    return output.value;
   }
 
   function showToast(text) {
@@ -151,87 +180,43 @@ window.addEventListener("DOMContentLoaded", () => {
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
-  function getQuipPool(category = activeQuipCategory) {
-    if (category === "all") {
-      return Object.values(gamerQuipCategories).flat();
-    }
-
-    return gamerQuipCategories[category] || [];
-  }
-
-  function pullRandomFromPool(pool) {
-    if (!pool.length) return "";
-    const index = randomInt(0, pool.length - 1);
-    return pool.splice(index, 1)[0];
-  }
-
-  function pickRandomQuips(count = 10) {
-    const pool = [...getQuipPool()];
-    const picks = [];
-
-    if (activeQuipCategory === "all") {
-      requiredQuipCategories.forEach(category => {
-        const pick = pullRandomFromPool([...(gamerQuipCategories[category] || [])]);
-        if (pick && !picks.includes(pick)) picks.push(pick);
-      });
-    }
-
-    while (pool.length && picks.length < count) {
-      const pick = pullRandomFromPool(pool);
-      if (!picks.includes(pick)) picks.push(pick);
-    }
-
-    return picks;
-  }
-
-  function renderRandomQuipCategories() {
-    if (!randomQuipCategories) return;
-
-    randomQuipCategories.innerHTML = "";
-
-    Object.entries(gamerQuipCategoryLabels).forEach(([key, label]) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "random-quip-category";
-      button.classList.toggle("active", key === activeQuipCategory);
-      button.textContent = label;
-      button.dataset.category = key;
-      randomQuipCategories.appendChild(button);
-    });
-  }
-
-  function renderRandomQuips() {
-    if (!randomQuipsList) return;
-
-    randomQuipsList.innerHTML = "";
-
-    pickRandomQuips().forEach(quip => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "random-quip";
-      button.textContent = quip;
-      button.dataset.quip = quip;
-      randomQuipsList.appendChild(button);
-    });
-  }
-
-  function scheduleRandomQuipRefresh() {
-    window.clearTimeout(scheduleRandomQuipRefresh.timer);
-
-    scheduleRandomQuipRefresh.timer = window.setTimeout(() => {
-      renderRandomQuips();
-      scheduleRandomQuipRefresh();
-    }, randomInt(5000, 10000));
-  }
-
   function updateRemoveModeUI() {
     const active = state.removeMode;
     document.body.classList.toggle("remove-mode", active);
-    removeModeBtn.textContent = active ? "Done Removing" : "Remove";
+    removeModeBtn.innerHTML = active
+      ? '<i class="fa-solid fa-check" aria-hidden="true"></i><span>Done</span>'
+      : '<i class="fa-solid fa-trash" aria-hidden="true"></i><span>Remove</span>';
     removeModeBtn.classList.toggle("active", active);
+    removeModeBtn.setAttribute("aria-pressed", String(active));
+    removeModeBtn.setAttribute("aria-label", active ? "Done removing" : "Manage saved items");
+    removeModeBtn.title = active ? "Done removing" : "Manage saved items";
+    document.querySelectorAll(".saved-item-clipboard").forEach(item => {
+      item.tabIndex = active ? -1 : 0;
+      if (active) {
+        item.removeAttribute("role");
+        item.removeAttribute("aria-label");
+      } else {
+        item.setAttribute("role", "button");
+        item.setAttribute("aria-label", "Copy saved text");
+      }
+    });
+  }
+
+  function finishRemoveMode() {
+    clearTimeout(removeModeExitTimer);
+    if (!state.removeMode) return;
+    state.removeMode = false;
+    updateRemoveModeUI();
+    renderPresetThemes();
+  }
+
+  function scheduleRemoveModeExit() {
+    clearTimeout(removeModeExitTimer);
+    removeModeExitTimer = setTimeout(finishRemoveMode, 3000);
   }
 
   function copy(text, label = "Copied", { silent = false } = {}) {
+    text = compactOutput(text);
     if (!text) return;
     navigator.clipboard.writeText(text).then(() => {
       if (!silent) showToast(label);
@@ -244,6 +229,21 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!autoCopyBtn) return;
     autoCopyBtn.textContent = autoCopyEnabled ? "Auto Copy On" : "Auto Copy Off";
     autoCopyBtn.classList.toggle("active", autoCopyEnabled);
+  }
+
+
+  function shuffleGradient({ track = true } = {}) {
+    rememberRecentGradient(state.colors);
+    const activeCount = activeColorCount();
+    paletteColors = ensurePaletteSize(Math.max(desiredColorCount, activeCount));
+    const generated = randColors(Math.max(activeCount, 1));
+    const next = paletteColors.slice(0, activeCount);
+
+    for (let index = 0; index < activeCount; index++) {
+      next[index] = isColorLocked(index) ? (next[index] || state.colors[index]) : generated[index];
+    }
+
+    setColors(next, { track });
   }
 
   function trackAutoCopy(action, text = "") {
@@ -338,15 +338,28 @@ window.addEventListener("DOMContentLoaded", () => {
       button.className = "preset-category";
       button.dataset.category = category;
       button.textContent = formatPresetCategory(category);
-      button.classList.toggle("active", category === activePresetCategory);
+      const active = category === activePresetCategory;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", String(active));
       presetCategories.appendChild(button);
     });
   }
 
+  const presetOrders = new Map();
+
+  function shuffleActivePresets() {
+    const keys = (getPresetCatalog()[activePresetCategory] || []).map(makePresetKey);
+    presetOrders.set(activePresetCategory, shufflePresets(keys, presetOrders.get(activePresetCategory)));
+  }
+
   function renderPresetThemes() {
+    clearPresetHover();
     presetThemes.innerHTML = "";
 
-    const activeThemes = getPresetCatalog()[activePresetCategory] || [];
+    if (!presetOrders.has(activePresetCategory)) shuffleActivePresets();
+    const order = presetOrders.get(activePresetCategory);
+    const activeThemes = [...(getPresetCatalog()[activePresetCategory] || [])]
+      .sort((a, b) => order.indexOf(makePresetKey(a)) - order.indexOf(makePresetKey(b)));
 
     if (!activeThemes.length) {
       presetThemes.innerHTML = `<div class="preset-empty">No presets in this tab yet.</div>`;
@@ -358,6 +371,7 @@ window.addEventListener("DOMContentLoaded", () => {
       button.type = "button";
       button.className = "preset-theme";
       button.dataset.signature = makePresetKey(entry);
+      button.setAttribute("aria-pressed", String(makePresetKey(entry) === activePresetKey));
       button.style.setProperty("--preset-theme-bg", entry.colors.length === 1
         ? entry.colors[0]
         : `linear-gradient(135deg, ${entry.colors.join(", ")})`);
@@ -374,10 +388,20 @@ window.addEventListener("DOMContentLoaded", () => {
         </span>
       `;
 
-      if (activePresetCategory === userPresetCategory && state.removeMode) {
+      if (activePresetCategory === userPresetCategory) {
         const removeButton = document.createElement("span");
+        removeButton.tabIndex = 0;
+        removeButton.setAttribute("role", "button");
+        removeButton.setAttribute("aria-label", `Remove ${entry.name}`);
+        removeButton.onkeydown = event => {
+          if (!["Enter", " "].includes(event.key)) return;
+          event.preventDefault();
+          event.stopPropagation();
+          removeButton.click();
+        };
         removeButton.className = "preset-theme-remove";
-        removeButton.innerHTML = "&times;";
+        removeButton.innerHTML = '<i class="fa-solid fa-trash-can" aria-hidden="true"></i>';
+        removeButton.title = "Remove saved preset";
         button.appendChild(removeButton);
       }
 
@@ -385,48 +409,97 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function renderPresetDetail() {
+  function renderPresetSelection() {
     const preset = getActivePresetEntry();
-    if (!preset) {
-      presetFavoriteBtn.disabled = true;
-      presetApplyBtn.disabled = true;
-      presetDetailName.textContent = "No preset selected";
-      presetDetailPreview.style.background = "linear-gradient(135deg, #2b2b2b, #121212)";
-      presetDetail.style.background = "linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)), linear-gradient(180deg, rgba(18, 18, 18, 0.9), rgba(10, 10, 10, 0.84))";
-      presetDetailColors.innerHTML = "";
-      presetFavoriteBtn.style.boxShadow = "0 12px 24px rgba(0, 0, 0, 0.18)";
-      presetApplyBtn.style.boxShadow = "0 12px 24px rgba(0, 0, 0, 0.22)";
-      return;
+    renderPresetCategories();
+    presetFavoriteBtn.disabled = !preset;
+    el("presetRandomBtn").disabled = !(getPresetCatalog()[activePresetCategory] || []).length;
+    presetSelectionName.textContent = preset?.name || "No preset selected";
+    const isFavorite = preset && getFavoritePresets().some(entry => entry.name === preset.name && gradientSignature(entry.colors) === gradientSignature(preset.colors));
+    presetFavoriteBtn.querySelector("span").textContent = isFavorite ? "Remove Favorite" : "Save Favorite";
+    presetFavoriteBtn.querySelector("i").className = `${isFavorite ? "fa-solid" : "fa-regular"} fa-star`;
+    presetFavoriteBtn.setAttribute("aria-pressed", String(Boolean(isFavorite)));
+    presetFavoriteBtn.classList.toggle("active", Boolean(isFavorite));
+  }
+
+  function renderEditorPresetPreview(animate = false) {
+    renderColorHandles();
+    updateColorCountButtons();
+    updateGradientBar();
+    const previousColors = animate
+      ? [...preview.querySelectorAll(".preview-text > span")].map(span => getComputedStyle(span).color)
+      : [];
+    renderMessage();
+    if (animate && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      preview.querySelectorAll(".preview-text > span").forEach((span, index) => {
+        if (previousColors[index] && span.animate) {
+          span.animate([{ color: previousColors[index] }, { color: getComputedStyle(span).color }], {
+            duration: 240, easing: "ease-in-out"
+          });
+        }
+      });
     }
+  }
 
-    presetFavoriteBtn.disabled = false;
-    presetApplyBtn.disabled = false;
+  function clearPresetHover() {
+    recentPreviewActive = false;
+    if (!hoveredPresetColors) return;
+    hoveredPresetColors = null;
+    renderEditorPresetPreview();
+  }
 
-    presetDetailPreview.classList.add("is-updating");
-    presetDetailName.textContent = preset.name;
-    presetDetail.style.background = "linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)), linear-gradient(180deg, rgba(18, 18, 18, 0.9), rgba(10, 10, 10, 0.84))";
-    presetDetailPreview.style.background = `linear-gradient(90deg, ${preset.colors.join(", ")})`;
-    presetApplyBtn.style.background = `linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03)), linear-gradient(90deg, ${preset.colors.join(", ")})`;
-    const shadowColor = preset.colors[Math.floor(preset.colors.length / 2)] || preset.colors[0] || "#ffffff";
-    presetFavoriteBtn.style.boxShadow = `0 12px 24px rgba(0, 0, 0, 0.22), 0 0 22px ${shadowColor}33`;
-    presetApplyBtn.style.boxShadow = `0 16px 28px rgba(0, 0, 0, 0.26), 0 0 28px ${shadowColor}4d`;
-    presetDetailColors.innerHTML = "";
+  let lastOpenedDrawer = "advanced";
+  let syncingDrawerLayout = false;
+  function compactDrawers() {
+    return window.innerWidth < advancedDrawer.getBoundingClientRect().width + presetDrawer.getBoundingClientRect().width + 608;
+  }
 
-    window.clearTimeout(renderPresetDetail.previewTimer);
-    renderPresetDetail.previewTimer = window.setTimeout(() => {
-      presetDetailPreview.classList.remove("is-updating");
-    }, 220);
+  function updateDrawerLayout() {
+    if (syncingDrawerLayout) return;
+    syncingDrawerLayout = true;
+    const compact = compactDrawers();
+    document.body.classList.toggle("compact-drawers", compact);
+    if (compact && advancedDrawer.classList.contains("is-open") && presetDrawer.classList.contains("is-open")) {
+      const keep = advancedDrawer.contains(document.activeElement) ? "advanced" : presetDrawer.contains(document.activeElement) ? "preset" : lastOpenedDrawer;
+      setDrawerOpen(keep === "advanced" ? "preset" : "advanced", false, { restoreFocus: false });
+    }
+    const left = advancedDrawer.classList.contains("is-open") ? advancedDrawer.getBoundingClientRect().width : 0;
+    const right = presetDrawer.classList.contains("is-open") ? presetDrawer.getBoundingClientRect().width : 0;
+    const fitsBeside = window.innerWidth - left - right >= 480;
+    document.documentElement.style.setProperty("--editor-left-space", fitsBeside ? `${left}px` : "0px");
+    document.documentElement.style.setProperty("--editor-right-space", fitsBeside ? `${right}px` : "0px");
+    syncingDrawerLayout = false;
+    fitPreview();
+  }
+  window.addEventListener("resize", updateDrawerLayout);
 
-    preset.colors.forEach(color => {
-      const chip = document.createElement("span");
-      chip.className = "preset-color-chip";
-      chip.textContent = color;
-      presetDetailColors.appendChild(chip);
+  function setDrawerOpen(name, open, { restoreFocus = true } = {}) {
+    clearPresetHover();
+    if (name === "preset" && open && !presetDrawer.classList.contains("is-open")) {
+      shuffleActivePresets();
+      renderPresetThemes();
+    }
+    if (open) lastOpenedDrawer = name;
+    const compact = compactDrawers();
+    const drawers = [
+      { name: "preset", panel: presetDrawer, button: presetBtn, close: presetCloseBtn },
+      { name: "advanced", panel: advancedDrawer, button: advancedBtn, close: advancedCloseBtn }
+    ];
+    drawers.forEach(drawer => {
+      if (open) drawer.panel.style.zIndex = drawer.name === name ? "101" : "100";
+      if (drawer.name !== name && !(open && compact)) return;
+      const active = open && drawer.name === name;
+      document.body.classList.toggle(drawer.name + "-drawer-open", active);
+      drawer.panel.classList.toggle("is-open", active);
+      drawer.panel.inert = !active;
+      if (!active) drawer.panel.dispatchEvent(new Event("drawerclose"));
+      drawer.panel.setAttribute("aria-hidden", String(!active));
+      drawer.button.setAttribute("aria-expanded", String(active));
+      drawer.button.classList.toggle("active", active);
+      if (active) drawer.close.focus({ preventScroll: true });
+      else if (!open && drawer.name === name && restoreFocus) drawer.button.focus({ preventScroll: true });
     });
-
-    const isFavorite = getFavoritePresets().some(entry => entry.name === preset.name && gradientSignature(entry.colors) === gradientSignature(preset.colors));
-    presetFavoriteBtn.textContent = isFavorite ? "Remove Favorite" : "Save Favorite";
-    presetFavoriteBtn.classList.toggle("active", isFavorite);
+    updateDrawerLayout();
   }
 
   function ensureActivePresetSelection() {
@@ -446,9 +519,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const currentList = catalog[activePresetCategory] || [];
     const hasActivePreset = currentList.some(entry => makePresetKey(entry) === activePresetKey);
 
-    if (!hasActivePreset) {
-      activePresetKey = currentList[0] ? makePresetKey(currentList[0]) : "";
-    }
+    if (!hasActivePreset) activePresetKey = "";
   }
 
   function toggleFavoritePreset() {
@@ -467,7 +538,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
       renderPresetCategories();
       renderPresetThemes();
-      renderPresetDetail();
+      renderPresetSelection();
       showToast("Favorite removed");
       return;
     }
@@ -482,7 +553,7 @@ window.addEventListener("DOMContentLoaded", () => {
     ensureActivePresetSelection();
     renderPresetCategories();
     renderPresetThemes();
-    renderPresetDetail();
+    renderPresetSelection();
     showToast("Favorite saved");
   }
 
@@ -496,12 +567,6 @@ window.addEventListener("DOMContentLoaded", () => {
 
   function gradientSignature(colors) {
     return colors.map(normalizeHex).join("|");
-  }
-
-  function maxColorStops(text = input.value) {
-    const visible = visibleCount(text);
-    if (visible <= 1) return 1;
-    return Math.max(2, Math.min(4, Math.ceil(visible / 2)));
   }
 
   function modeLabel(mode) {
@@ -571,131 +636,30 @@ window.addEventListener("DOMContentLoaded", () => {
     autoIntensityManaged = false;
   }
 
-  function rgbToHsl({ r, g, b }) {
-    const rn = r / 255;
-    const gn = g / 255;
-    const bn = b / 255;
-    const max = Math.max(rn, gn, bn);
-    const min = Math.min(rn, gn, bn);
-    const lightness = (max + min) / 2;
-    const delta = max - min;
-
-    if (delta === 0) {
-      return { h: 0, s: 0, l: lightness };
+  function randomRawHex() {
+    const values = new Uint32Array(2);
+    crypto.getRandomValues(values);
+    // Mix the full RGB range with neutrals and very dark/light colors.
+    // Equal RGB sampling alone makes exact black or white very rare.
+    const zone = values[0] & 7;
+    const raw = values[1];
+    if (zone === 0) return "#000";
+    if (zone === 1) return "#EEE";
+    if (zone === 2) {
+      const gray = (raw & 255).toString(16).padStart(2, "0");
+      return normalizeHex("#" + gray.repeat(3));
     }
-
-    const saturation = lightness > 0.5
-      ? delta / (2 - max - min)
-      : delta / (max + min);
-
-    let hue = 0;
-
-    if (max === rn) hue = (gn - bn) / delta + (gn < bn ? 6 : 0);
-    else if (max === gn) hue = (bn - rn) / delta + 2;
-    else hue = (rn - gn) / delta + 4;
-
-    return { h: hue * 60, s: saturation, l: lightness };
-  }
-
-  function hslToRgb(h, s, l) {
-    const c = (1 - Math.abs(2 * l - 1)) * s;
-    const x = c * (1 - Math.abs((h / 60) % 2 - 1));
-    const m = l - c / 2;
-    let r = 0;
-    let g = 0;
-    let b = 0;
-
-    if (h < 60) [r, g, b] = [c, x, 0];
-    else if (h < 120) [r, g, b] = [x, c, 0];
-    else if (h < 180) [r, g, b] = [0, c, x];
-    else if (h < 240) [r, g, b] = [0, x, c];
-    else if (h < 300) [r, g, b] = [x, 0, c];
-    else [r, g, b] = [c, 0, x];
-
-    return {
-      r: Math.round((r + m) * 255),
-      g: Math.round((g + m) * 255),
-      b: Math.round((b + m) * 255)
-    };
-  }
-
-  function pickHueForTemperature() {
-    const bias = colorTemperature / 100;
-    const mixedHue = Math.random() * 360;
-    const warmHue = Math.random() > 0.5
-      ? randomInt(0, 54)
-      : randomInt(320, 359);
-    const coolHue = randomInt(165, 275);
-    const chance = Math.abs(bias);
-
-    if (bias > 0 && Math.random() < chance) return warmHue;
-    if (bias < 0 && Math.random() < chance) return coolHue;
-    return mixedHue;
-  }
-
-  function randColor(minDistance = 120) {
-    function get() {
-      return hslToRgb(
-        pickHueForTemperature(),
-        0.58 + Math.random() * 0.36,
-        0.42 + Math.random() * 0.24
-      );
-    }
-
-    function dist(a, b) {
-      return Math.sqrt(
-        (a.r - b.r) ** 2 +
-        (a.g - b.g) ** 2 +
-        (a.b - b.b) ** 2
-      );
-    }
-
-    let next = get();
-
-    if (Array.isArray(minDistance)) {
-      const existing = minDistance.map(hex => {
-        const rgb = hexToRgb(hex);
-        return { rgb, hsl: rgbToHsl(rgb) };
-      });
-
-      function isTooSimilar(candidate) {
-        const candidateHsl = rgbToHsl(candidate);
-
-        return existing.some(({ rgb, hsl }) => {
-          const hueGap = Math.min(Math.abs(hsl.h - candidateHsl.h), 360 - Math.abs(hsl.h - candidateHsl.h));
-          const lightGap = Math.abs(hsl.l - candidateHsl.l);
-          const satGap = Math.abs(hsl.s - candidateHsl.s);
-          const rgbGap = dist(rgb, candidate);
-
-          return rgbGap < 125 || (hueGap < 28 && lightGap < 0.18) || (hueGap < 20 && satGap < 0.22);
-        });
-      }
-
-      let attempts = 0;
-
-      while (isTooSimilar(next) && attempts < 80) {
-        next = get();
-        attempts++;
-      }
-    }
-
-    return normalizeHex(
-      "#" +
-      next.r.toString(16).padStart(2, "0") +
-      next.g.toString(16).padStart(2, "0") +
-      next.b.toString(16).padStart(2, "0")
-    );
+    const channels = [raw & 255, (raw >>> 8) & 255, (raw >>> 16) & 255];
+    if (zone === 3) channels.forEach((value, i) => { channels[i] = value & 31; });
+    if (zone === 4) channels.forEach((value, i) => { channels[i] = 224 + (value & 31); });
+    return normalizeHex("#" + channels.map(value => value.toString(16).padStart(2, "0")).join(""));
   }
 
   function randColors(count) {
-    const colors = [];
-
-    while (colors.length < count) {
-      const next = randColor(colors);
-      colors.push(next);
+    if (generatorMode === "random") {
+      return Array.from({ length: count }, randomRawHex);
     }
-
-    return colors;
+    return generateCleanColors(count, Math.random() * 360, Math.random, colorTemperature);
   }
 
   function activeColorCount(text = input.value) {
@@ -710,22 +674,21 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function getGradientPreview(colors = state.colors) {
-    if (!colors.length) {
-      return "linear-gradient(90deg, #00FF9C, #FF7A00)";
-    }
-
-    if (colors.length === 1) {
-      return `linear-gradient(90deg, ${colors[0]}, ${colors[0]})`;
-    }
-
-    return `linear-gradient(90deg, ${colors.join(", ")})`;
+    const stops = colors.length ? colors : ["#0F9", "#FF7A00"];
+    return `linear-gradient(90deg, ${(stops.length === 1 ? [stops[0], stops[0]] : stops).join(", ")})`;
   }
 
   function ensurePaletteSize(targetCount) {
     const next = [...paletteColors];
 
-    while (next.length < targetCount) {
-      next.push(randColor(next));
+    if (next.length < targetCount) {
+      const generated = randColors(targetCount);
+
+      while (next.length < targetCount) {
+        next.push(generated[next.length]);
+      }
+
+      return next;
     }
 
     return next;
@@ -749,7 +712,8 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateGradientBar() {
-    const g = getGradientPreview();
+    const colors = hoveredPresetColors;
+    const g = getGradientPreview(colors || state.colors);
     gradientBar.style.background = g;
     document.documentElement.style.setProperty("--slider-gradient", g);
   }
@@ -757,22 +721,25 @@ window.addEventListener("DOMContentLoaded", () => {
   function getRecentGradients() {
     return getList("gd-recent-gradients")
       .filter(entry => Array.isArray(entry?.colors) && entry.colors.length)
+      .slice(0, RECENT_GRADIENT_LIMIT)
       .map(entry => ({ colors: entry.colors.map(normalizeHex) }));
   }
 
   function renderRecentGradients() {
     if (!recentGradients) return;
+    clearRecentHover();
 
     const recent = getRecentGradients();
     recentGradients.innerHTML = "";
     recentGradients.classList.toggle("hidden", recent.length === 0);
 
-    recent.slice(0, 7).forEach((entry, index) => {
+    recent.forEach((entry, index) => {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "recent-gradient-swatch";
       button.dataset.index = String(index);
       button.title = entry.colors.join(", ");
+      button.setAttribute("aria-label", `Recent gradient ${index + 1}: ${entry.colors.join(", ")}`);
       button.style.background = getGradientPreview(entry.colors);
       recentGradients.appendChild(button);
     });
@@ -786,30 +753,65 @@ window.addEventListener("DOMContentLoaded", () => {
     const next = [
       { colors: normalized },
       ...getRecentGradients().filter(entry => gradientSignature(entry.colors) !== signature)
-    ].slice(0, 7);
+    ].slice(0, RECENT_GRADIENT_LIMIT);
 
     saveList("gd-recent-gradients", next);
     renderRecentGradients();
   }
 
   function temperatureLabel(value) {
-    if (value <= -60) return "Cool";
+    if (value <= -100) return "Cool";
     if (value < -18) return "Cool Mix";
-    if (value >= 60) return "Warm";
-    if (value > 18) return "Warm Mix";
-    return "Mixed";
+    if (value >= 100) return "Hot";
+    if (value > 18) return "Hot Mix";
+    return "Balanced";
   }
 
   function renderTemperatureControl() {
     if (!temperatureSlider || !temperatureValue) return;
+    temperatureSlider.disabled = generatorMode !== "clean";
     temperatureSlider.value = String(colorTemperature);
     temperatureValue.textContent = temperatureLabel(colorTemperature);
     updateGradientResetState();
   }
 
+  function generatorModeLabel(mode) {
+    if (mode === "clean") return "Clean";
+    return "Random";
+  }
+
+  function renderGeneratorModeControls() {
+    renderTemperatureControl();
+    generatorModeButtons.forEach(button => {
+      button.classList.toggle("active", button.dataset.generatorMode === generatorMode);
+      button.setAttribute("aria-pressed", String(button.dataset.generatorMode === generatorMode));
+    });
+
+    if (intensityCurrent) {
+      intensityCurrent.title = `Gradient: ${modeLabel(state.mode)}. Generator: ${generatorModeLabel(generatorMode)}.`;
+    }
+
+    updateGradientResetState();
+  }
+
+  function setGeneratorMode(mode, { shuffle = true } = {}) {
+    generatorMode = ["clean", "random"].includes(mode) ? mode : "clean";
+    localStorage.setItem("gd-generator-mode", generatorMode);
+    renderGeneratorModeControls();
+
+    if (shuffle) {
+      shuffleGradient();
+    } else {
+      update();
+    }
+  }
+
   function updateGradientResetState() {
     if (!gradientResetBtn) return;
-    gradientResetBtn.disabled = colorTemperature === 0 && state.mode === 5;
+    gradientResetBtn.disabled = colorTemperature === 0
+      && state.mode === 5
+      && generatorMode === "clean"
+      && !anyActiveColorLocked();
   }
 
   function setThemeMode(mode) {
@@ -830,7 +832,7 @@ window.addEventListener("DOMContentLoaded", () => {
       const count = +button.dataset.colorCount;
       button.disabled = false;
       button.classList.remove("hidden-option");
-      button.classList.toggle("active", count === desiredColorCount);
+      button.classList.toggle("active", count === (hoveredPresetColors?.length || desiredColorCount));
     });
   }
 
@@ -843,25 +845,43 @@ window.addEventListener("DOMContentLoaded", () => {
     destroyPickrs();
     gradientHandles.innerHTML = "";
 
-    const count = state.colors.length;
+    const displayColors = hoveredPresetColors || state.colors;
+    const count = displayColors.length;
+    syncColorLocks();
 
-    state.colors.forEach((color, index) => {
-      const handle = document.createElement("button");
-      handle.type = "button";
+    displayColors.forEach((color, index) => {
+      const handle = document.createElement("div");
       handle.className = "gradient-handle";
+      handle.style.setProperty("--stop-color", color);
       handle.style.left = `${getHandlePosition(index, count)}%`;
+      handle.setAttribute("role", "button");
+      handle.setAttribute("tabindex", "0");
+      handle.setAttribute("aria-label", `Edit color ${index + 1}`);
 
       if (count > 1 && index === 0) handle.classList.add("edge-left");
       if (count > 1 && index === count - 1) handle.classList.add("edge-right");
+      if (isColorLocked(index)) handle.classList.add("locked");
 
       handle.innerHTML = `
         <div class="handle-inner">
           <div class="handle-line"></div>
-          <div class="handle-hex">${color}</div>
+          <div class="handle-chip">
+            <button class="handle-lock" type="button" aria-label="${isColorLocked(index) ? "Unlock" : "Lock"} color ${index + 1}" title="${isColorLocked(index) ? "Color locked — click to unlock" : "Lock color"}">
+              <i class="fa-solid ${isColorLocked(index) ? "fa-lock" : "fa-lock-open"}" aria-hidden="true"></i>
+            </button>
+            <div class="handle-hex">${compactHexTag(color)}</div>
+          </div>
         </div>
       `;
 
       gradientHandles.appendChild(handle);
+
+      if (hoveredPresetColors) {
+        handle.removeAttribute('role');
+        handle.removeAttribute('tabindex');
+        handle.querySelector('.handle-lock').disabled = true;
+        return;
+      }
 
       const pickr = Pickr.create({
         el: handle,
@@ -872,18 +892,40 @@ window.addEventListener("DOMContentLoaded", () => {
       });
 
       pickr.on("change", picked => {
-        const hex = normalizeHex(picked.toHEXA().toString());
+        const hex = compactHexTag(picked.toHEXA().toString());
         handle.querySelector(".handle-hex").textContent = hex;
+        handle.style.setProperty("--stop-color", hex);
         setColorAt(index, hex, { rerender: false });
       });
 
-      handle.addEventListener("click", () => pickr.show());
+      handle.querySelector(".handle-lock")?.addEventListener("click", event => {
+        event.stopPropagation();
+        toggleColorLock(index);
+      });
+
+      handle.addEventListener("click", event => {
+        if (event.target.closest(".handle-lock")) return;
+        pickr.show();
+      });
+
+      handle.addEventListener("keydown", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        pickr.show();
+      });
+
       pickrs.push(pickr);
     });
   }
 
   function setColors(colors, { rerender = true, track = true } = {}) {
-    state.colors = colors.map(normalizeHex);
+    // A committed edit must replace any temporary preset preview, including its disabled handles.
+    const hadPreview = Boolean(hoveredPresetColors);
+    hoveredPresetColors = null;
+    recentPreviewActive = false;
+    state.colors = colors.map(compactHexTag);
+    selectionModel?.clearColors();
+    syncColorLocks();
     paletteColors = ensurePaletteSize(Math.max(desiredColorCount, state.colors.length));
 
     state.colors.forEach((color, index) => {
@@ -892,7 +934,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
     updateGradientBar();
 
-    if (rerender) {
+    if (rerender || hadPreview) {
       renderColorHandles();
     }
 
@@ -921,13 +963,21 @@ window.addEventListener("DOMContentLoaded", () => {
     setColors(paletteColors.slice(0, state.colors.length), options);
   }
 
-  function applySavedGradient(colors) {
-    desiredColorCount = colors.length;
-    paletteColors = ensurePaletteSize(colors.length);
-    colors.forEach((color, index) => {
-      paletteColors[index] = normalizeHex(color);
-    });
+  function presetColorsBySlot(colors) {
+    const current = paletteColors.slice();
+    state.colors.forEach((color, index) => { current[index] = color; });
+    const fitted = fitPaletteToCount(colors, Math.min(4, colors.length));
+    return fitted.map((color, index) => isColorLocked(index) && current[index] ? current[index] : color);
+  }
 
+  function applySavedGradient(colors) {
+    const next = presetColorsBySlot(colors);
+    hoveredPresetColors = null;
+    desiredColorCount = next.length;
+    updateColorCountButtons();
+    syncColorLocks();
+    paletteColors = ensurePaletteSize(next.length);
+    next.forEach((color, index) => { paletteColors[index] = normalizeHex(color); });
     setColors(paletteColors.slice(0, desiredColorCount));
     return { ok: true };
   }
@@ -954,28 +1004,34 @@ window.addEventListener("DOMContentLoaded", () => {
 
   async function loadPresetGradients() {
     try {
-      const response = await fetch("./gradients.json", { cache: "no-store" });
-      if (!response.ok) throw new Error("Failed to load preset gradients");
-
-      const data = await response.json();
-      presetData = data || {};
+      const categories = {
+        Anime: "anime",
+        Anime_Characters: "anime_characters",
+        Superpowered: "superpowered",
+        Video_Games: "video-games",
+        Movies_TV: "movies-tv",
+        Vibes: "vibes",
+        Brands: "brands"
+      };
+      presetData = Object.fromEntries(await Promise.all(
+        Object.entries(categories).map(async ([category, file]) => {
+          const response = await fetch(`./gradients/${file}.json`, { cache: "no-store" });
+          if (!response.ok) throw new Error(`Failed to load ${category} gradients`);
+          return [category, await response.json()];
+        })
+      ));
 
       ensureActivePresetSelection();
 
       renderPresetCategories();
       renderPresetThemes();
-      renderPresetDetail();
+      renderPresetSelection();
     } catch {
       presetData = {};
       ensureActivePresetSelection();
       renderPresetCategories();
       renderPresetThemes();
-      presetDetailName.textContent = "Presets unavailable";
-      presetDetail.style.background = "linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)), linear-gradient(180deg, rgba(18, 18, 18, 0.9), rgba(10, 10, 10, 0.84))";
-      presetDetailPreview.style.background = "linear-gradient(90deg, #333, #111)";
-      presetDetailColors.innerHTML = "";
       presetFavoriteBtn.disabled = true;
-      presetApplyBtn.disabled = true;
     }
   }
 
@@ -1006,12 +1062,15 @@ window.addEventListener("DOMContentLoaded", () => {
     return [
       bold, italic, underline, strike, superscript, subscript, caseEffect, cspace, mspace, align,
       pos, indent, lineIndent, margin, widthEffect, lineHeight, rotate, voffset, mark,
-      markEnabled, space
+      markEnabled, space, trueRandomEffects, namedStyle, fontEffect, el("textScale")
     ].filter(Boolean);
   }
 
   function getEffects() {
     return {
+      size: el("textScale").value === "" ? "" : Math.round(Math.max(0.01, Math.min(3, Number(el("textScale").value))) * 100),
+      namedStyle: namedStyle.value,
+      font: fontEffect.value,
       bold: bold?.checked || false,
       italic: italic?.checked || false,
       underline: underline?.checked || false,
@@ -1032,48 +1091,162 @@ window.addEventListener("DOMContentLoaded", () => {
       voffset: voffset?.value || "",
       mark: mark?.value || "#ffff00",
       markEnabled: markEnabled?.checked || false,
-      space: space?.value || ""
+      space: space?.value || "",
+      trueRandomEffects: isTrueRandomEffectsEnabled()
     };
   }
 
-  function hasActiveEffect() {
-    return getActiveEffectLabels().length > 0;
+  function getRandomEffectDefinitions() {
+    return [
+      { open: "<b>", close: "</b>", preview: { bold: true } },
+      { open: "<i>", close: "</i>", preview: { italic: true } },
+      { open: "<u>", close: "</u>", preview: { underline: true } },
+      { open: "<s>", close: "</s>", preview: { strike: true } },
+      { open: "<smallcaps>", close: "</smallcaps>", preview: { caseEffect: "smallcaps" } },
+      { open: "<rotate=45>", close: "</rotate>", preview: { rotate: 45 } },
+      { open: "<rotate=-45>", close: "</rotate>", preview: { rotate: -45 } },
+      { open: "<rotate=25>", close: "</rotate>", preview: { rotate: 25 } },
+      { open: "<rotate=-25>", close: "</rotate>", preview: { rotate: -25 } },
+      { open: "<voffset=0.22em>", close: "</voffset>", preview: { voffset: 0.22 } },
+      { open: "<voffset=-0.18em>", close: "</voffset>", preview: { voffset: -0.18 } }
+    ];
+  }
+
+  function makeRandomEffectPlan(text) {
+    const total = visibleCount(text);
+    const plan = Array.from({ length: total }, () => []);
+    const definitions = getRandomEffectDefinitions();
+    let index = 0;
+
+    while (index < total) {
+      const segmentLength = randomInt(1, Math.min(3, total - index));
+
+      if (Math.random() < 0.24) {
+        index += segmentLength;
+        continue;
+      }
+
+      const shuffled = [...definitions].sort(() => Math.random() - 0.5);
+      const effectCount = Math.random() < 0.32 ? 2 : 1;
+      const effects = shuffled.slice(0, effectCount);
+
+      for (let offset = 0; offset < segmentLength; offset++) {
+        plan[index + offset] = effects;
+      }
+
+      index += segmentLength;
+    }
+
+    return plan;
+  }
+
+  function getRandomEffectPlan(text) {
+    if (!isTrueRandomEffectsEnabled()) return [];
+
+    // Keep effects by visible character position until explicitly rerolled.
+    // New positions get effects without changing the existing ones.
+    const total = visibleCount(text);
+    if (randomEffectPlan.length < total) {
+      randomEffectPlan.push(...makeRandomEffectPlan("x".repeat(total - randomEffectPlan.length)));
+    }
+
+    return randomEffectPlan.slice(0, total);
+  }
+
+  function partsWithRandomEffects(text, randomEffects, previewColors = null) {
+    let visibleIndex = 0;
+
+    return parts(text, depth, previewColors).map(part => {
+      if (part.ch === " ") return part;
+
+      const randomEffectsForChar = randomEffects[visibleIndex] || [];
+      visibleIndex++;
+
+      return {
+        ...part,
+        randomEffects: randomEffectsForChar
+      };
+    });
+  }
+
+  function effectDefinitions() {
+    return [
+      ["bold", "Bold"], ["italic", "Italic"], ["underline", "Underline"], ["strike", "Strike"],
+      ["superscript", "Sup"], ["subscript", "Sub"], ["caseEffect", "Case"],
+      ["cspace", "Letter spacing"], ["mspace", "Fixed width"], ["align", "Alignment"],
+      ["pos", "Position"], ["indent", "Indent"], ["lineIndent", "Line indent"],
+      ["margin", "Margin"], ["width", "Width", "widthEffect"], ["lineHeight", "Line height"],
+      ["rotate", "Rotation"], ["voffset", "Vertical offset"], ["markEnabled", "Color block"],
+      ["space", "Space"], ["trueRandomEffects", "RandomFx"], ["namedStyle", "Named style"],
+      ["font", "Font", "fontEffect"], ["size", "Scale", "textScale"]
+    ];
+  }
+
+  function getActiveEffectEntries() {
+    const effects = getEffects();
+    return effectDefinitions().filter(([key]) => Boolean(effects[key]) || selectionModel?.marks.some(mark =>
+      key === "trueRandomEffects" ? mark?.randomEffects?.length : Boolean(mark?.effects?.[key])))
+      .map(([key, label, control]) => {
+        const values = [...new Set([effects[key], ...(selectionModel?.marks || []).map(mark => mark?.effects?.[key])]
+          .filter(value => value !== undefined && value !== null && value !== '' && value !== false))];
+        const units = { cspace: 'px', mspace: 'px', pos: 'px', indent: 'px', lineIndent: 'px', margin: 'px', width: '%', lineHeight: '%', rotate: '°', voffset: 'em', space: 'em', size: '%' };
+        const valueLabels = values.filter(value => value !== true).map(value => {
+          if (key === 'font') return String(value).replace(/ SDF$/, '');
+          if (key === 'caseEffect') return ({ smallcaps: 'Small caps', uppercase: 'Uppercase', lowercase: 'Lowercase' })[value] || value;
+          if (key === 'align') return String(value).replace(/^./, letter => letter.toUpperCase());
+          return `${value}${units[key] || ''}`;
+        });
+        if (key === 'namedStyle') label = `${valueLabels.join(' / ')} style`;
+        else if (valueLabels.length && key !== 'trueRandomEffects') label += ` ${valueLabels.join(' / ')}`;
+        return [key, label, control];
+      });
   }
 
   function getActiveEffectLabels() {
-    const effects = getEffects();
-    const labels = [];
-
-    if (effects.bold) labels.push("Bold");
-    if (effects.italic) labels.push("Italic");
-    if (effects.underline) labels.push("Underline");
-    if (effects.strike) labels.push("Strike");
-    if (effects.superscript) labels.push("Sup");
-    if (effects.subscript) labels.push("Sub");
-    if (effects.caseEffect) labels.push(effects.caseEffect.replace("-", " "));
-    if (effects.cspace) labels.push("Letter Space");
-    if (effects.mspace) labels.push("Fixed Width");
-    if (effects.align) labels.push(`Align ${effects.align}`);
-    if (effects.pos) labels.push("Position");
-    if (effects.indent) labels.push("Indent");
-    if (effects.lineIndent) labels.push("Line Indent");
-    if (effects.margin) labels.push("Margin");
-    if (effects.width) labels.push("Width");
-    if (effects.lineHeight) labels.push("Line Height");
-    if (effects.rotate) labels.push("Rotate");
-    if (effects.voffset) labels.push("V Offset");
-    if (effects.markEnabled) labels.push("Color Block");
-    if (effects.space) labels.push("Space");
-
-    return labels;
+    return getActiveEffectEntries().map(([, label]) => label);
   }
 
   function updateEffectsSummary() {
-    const labels = getActiveEffectLabels();
-    effectsCurrent.textContent = labels.length ? labels.slice(0, 3).join(", ") + (labels.length > 3 ? ` +${labels.length - 3}` : "") : "Off";
-    effectsCurrent.title = labels.length ? labels.join(", ") : "No rich text effects";
+    const entries = getActiveEffectEntries();
+    const labels = entries.map(([, label]) => label);
+    effectsCurrent.textContent = labels.length ? `${labels.length} effect${labels.length === 1 ? "" : "s"} applied` : "Off";
+    effectsCurrent.title = labels.length ? labels.join(", ") : "No text effects";
     effectsCurrent.classList.toggle("active", labels.length > 0);
     effectsResetBtn.disabled = labels.length === 0;
+    const list = el("activeEffectList");
+    list.replaceChildren();
+    if (!entries.length) list.textContent = "No active effects";
+    entries.forEach(([key, label]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.removeEffect = key;
+      const text = document.createElement('span');
+      text.className = 'active-effect-label';
+      text.textContent = label;
+      const remove = document.createElement('span');
+      remove.className = 'active-effect-remove';
+      remove.textContent = '\u00d7';
+      remove.setAttribute('aria-hidden', 'true');
+      button.append(text, remove);
+      button.setAttribute("aria-label", `Remove ${label}`);
+      list.appendChild(button);
+    });
+  }
+
+  function removeEffect(key) {
+    const definition = effectDefinitions().find(([effect]) => effect === key);
+    if (!definition) return;
+    const control = el(definition[2] || key);
+    if (control) {
+      if (control.type === "checkbox") control.checked = false;
+      else control.value = "";
+    }
+    if (key === "trueRandomEffects") resetRandomEffectPlan();
+    selectionModel?.clearEffects(key);
+    updateHighlightUI();
+    updateOptionButtons();
+    input.dispatchEvent(new Event("effectschange"));
+    update();
   }
 
   function updateEffectControlStates() {
@@ -1126,36 +1299,86 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     });
 
+    resetRandomEffectPlan();
     updateHighlightUI();
     updateOptionButtons();
+  }
+
+  function resetTab(tab) {
+    if (tab === "text") {
+      selectionModel?.marks.fill(null);
+    } else {
+      const panel = advancedTabPanels.find(panel => panel.dataset.advancedPanel === tab);
+      if (!panel) return;
+      panel.querySelectorAll("input, select").forEach(control => {
+        if (control.type === "checkbox") control.checked = false;
+        else control.value = "";
+      });
+      if (tab === "styles") resetRandomEffectPlan();
+    }
+    updateHighlightUI();
+    updateOptionButtons();
+    input.dispatchEvent(new Event("effectschange"));
+    update();
   }
 
   function resetGradientControls() {
     colorTemperature = 0;
     localStorage.setItem("gd-color-temperature", "0");
+    generatorMode = "clean";
+    localStorage.setItem("gd-generator-mode", generatorMode);
+    state.colorLocks = [false, false, false, false];
+    persistColorLocks();
     autoIntensityManaged = false;
     setMode(5);
+    renderGeneratorModeControls();
     renderTemperatureControl();
+    renderColorHandles();
+  }
+
+  function reorderUnlockedColors(transform, emptyMessage) {
+    const activeCount = activeColorCount();
+    paletteColors = ensurePaletteSize(Math.max(desiredColorCount, activeCount));
+
+    const unlockedIndexes = Array.from({ length: activeCount }, (_, index) => index)
+      .filter(index => !isColorLocked(index));
+
+    if (unlockedIndexes.length < 2) {
+      showToast(emptyMessage);
+      return;
+    }
+
+    const current = paletteColors.slice(0, activeCount);
+    const reordered = transform(unlockedIndexes.map(index => current[index]));
+
+    unlockedIndexes.forEach((index, valueIndex) => {
+      current[index] = reordered[valueIndex];
+    });
+
+    setColors(current);
   }
 
   randomBtn.innerHTML = `<i class="fa-solid fa-shuffle"></i><span class="gradient-btn-label">Shuffle</span>`;
   swapBtn.innerHTML = `<i class="fa-solid fa-right-left"></i><span class="gradient-btn-label">Inverse</span>`;
-  presetBtn.innerHTML = `<i class="fa-solid fa-swatchbook"></i><span class="gradient-btn-label">Preset Gradients</span>`;
+  rotateBtn.innerHTML = `<i class="fa-solid fa-rotate"></i><span class="gradient-btn-label">Rotate</span>`;
+  presetBtn.innerHTML = `<i class="fa-solid fa-swatchbook"></i><span class="gradient-btn-label">Preset & Saved Gradients</span>`;
 
   randomBtn.setAttribute("aria-label", "Shuffle gradient");
   swapBtn.setAttribute("aria-label", "Inverse gradient");
-  presetBtn.setAttribute("aria-label", "Preset gradients");
+  rotateBtn.setAttribute("aria-label", "Rotate gradient");
+  presetBtn.setAttribute("aria-label", "Preset & saved gradients");
   randomBtn.title = "Shuffle";
   swapBtn.title = "Inverse";
-  presetBtn.title = "Preset Gradients";
+  rotateBtn.title = "Rotate unlocked colors";
+  presetBtn.title = "Preset & Saved Gradients";
 
   randomBtn.className = "gradient-btn";
   swapBtn.className = "gradient-btn";
+  rotateBtn.className = "gradient-btn";
   presetBtn.className = "gradient-btn";
 
   randomBtn.onclick = () => {
-    paletteColors = randColors(Math.max(desiredColorCount, 1));
-    setColors(paletteColors.slice(0, activeColorCount()));
+    shuffleGradient();
 
     if (window.gtag) {
       window.gtag('event', 'random_used', {
@@ -1165,18 +1388,25 @@ window.addEventListener("DOMContentLoaded", () => {
   };
 
   swapBtn.onclick = () => {
-    const activeCount = activeColorCount();
-    paletteColors = ensurePaletteSize(Math.max(desiredColorCount, activeCount));
+    reorderUnlockedColors(colors => [...colors].reverse(), "Unlock two colors to inverse");
+  };
 
-    const swapped = [...paletteColors.slice(0, activeCount)].reverse();
-    swapped.forEach((color, index) => {
-      paletteColors[index] = color;
-    });
-
-    setColors(paletteColors.slice(0, activeCount));
+  rotateBtn.onclick = () => {
+    reorderUnlockedColors(colors => {
+      const next = [...colors];
+      next.unshift(next.pop());
+      return next;
+    }, "Unlock two colors to rotate");
   };
   gradientToolbar.appendChild(randomBtn);
   gradientToolbar.appendChild(swapBtn);
+  gradientToolbar.appendChild(rotateBtn);
+  advancedBtn.type = "button";
+  advancedBtn.className = "gradient-btn";
+  advancedBtn.title = "Advanced Controls";
+  advancedBtn.setAttribute("aria-label", "Advanced controls");
+  advancedBtn.innerHTML = '<i class="fa-solid fa-sliders"></i><span class="gradient-btn-label">Advanced Controls</span>';
+  gradientToolbar.appendChild(advancedBtn);
   gradientToolbar.appendChild(presetBtn);
 
   colorCountButtons.forEach(button => {
@@ -1184,22 +1414,9 @@ window.addEventListener("DOMContentLoaded", () => {
       if (button.disabled) return;
       desiredColorCount = +button.dataset.colorCount;
       updateColorCountButtons();
-      paletteColors = ensurePaletteSize(desiredColorCount);
-      setColors(paletteColors.slice(0, activeColorCount()));
+      shuffleGradient();
     };
   });
-
-  advancedToggle.onclick = () => {
-    advancedContent.classList.toggle("hidden");
-    const open = !advancedContent.classList.contains("hidden");
-    advancedToggle.classList.toggle("open", open);
-    advancedCurrent.textContent = open ? "Open" : "Closed";
-
-    if (open) {
-      intensityContent?.classList.remove("hidden");
-      intensityToggle?.classList.add("open");
-    }
-  };
 
   advancedTabs.forEach(tab => {
     tab.onclick = () => {
@@ -1222,15 +1439,41 @@ window.addEventListener("DOMContentLoaded", () => {
     intensityToggle.classList.toggle("open", !intensityContent.classList.contains("hidden"));
   };
 
-  effectsToggle.onclick = () => {
-    effectsContent.classList.remove("hidden");
-    effectsToggle.classList.add("open");
+  function setEffectsManagerOpen(open) {
+    effectsContent.classList.toggle("hidden", !open);
+    effectsToggle.setAttribute("aria-expanded", String(open));
+    if (open) el("effectsCloseBtn").focus({ preventScroll: true });
+  }
+  effectsToggle.onclick = () => setEffectsManagerOpen(effectsContent.classList.contains("hidden"));
+  el("effectsCloseBtn").onclick = () => {
+    setEffectsManagerOpen(false);
+    effectsToggle.focus();
   };
-
+  el("effectsDock").addEventListener("keydown", event => {
+    if (event.key !== "Escape" || effectsContent.classList.contains("hidden")) return;
+    event.stopPropagation();
+    setEffectsManagerOpen(false);
+    effectsToggle.focus();
+  });
+  el("activeEffectList").onclick = event => {
+    const button = event.target.closest("[data-remove-effect]");
+    if (!button) return;
+    removeEffect(button.dataset.removeEffect);
+    (el("activeEffectList").querySelector("button") || effectsToggle).focus();
+  };
+  document.querySelectorAll("[data-reset-tab]").forEach(button => {
+    button.onclick = () => {
+      resetTab(button.dataset.resetTab);
+      showToast(`${button.textContent.replace("Reset ", "")} reset`);
+    };
+  });
   effectsResetBtn.onclick = () => {
     resetEffects();
+    selectionModel?.clearEffects();
+    input.dispatchEvent(new Event("effectschange"));
     update();
-    showToast("Text effects reset");
+    effectsToggle.focus();
+    showToast("All text effects cleared");
   };
 
   gradientResetBtn.onclick = () => {
@@ -1262,58 +1505,60 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   optionButtons.forEach(button => {
+    if (button.dataset.optionTarget === "trueRandomEffects") bindRandomFxHover(button);
     button.onclick = () => {
       const target = el(button.dataset.optionTarget);
       if (!target) return;
 
       const nextValue = button.dataset.optionValue || "";
-      const canToggleOff = button.dataset.optionTarget === "caseEffect";
-      target.value = canToggleOff && target.value === nextValue ? "" : nextValue;
+      const canToggleOff = ["caseEffect", "trueRandomEffects"].includes(button.dataset.optionTarget);
+      const turningOff = canToggleOff && target.value === nextValue;
+      target.value = turningOff ? "" : nextValue;
       updateOptionButtons();
       update();
     };
   });
 
-  randomQuipsList?.addEventListener("click", event => {
-    const button = event.target.closest(".random-quip");
-    if (!button) return;
-
-    input.value = button.dataset.quip || button.textContent;
+  trueRandomRerollBtn?.addEventListener("click", () => {
+    trueRandomEffects.value = "on";
+    resetRandomEffectPlan();
+    updateOptionButtons();
     update();
-    input.focus();
-    showToast("Random text applied");
+    showToast("RandomFx rerolled");
   });
 
-  randomQuipCategories?.addEventListener("click", event => {
-    const button = event.target.closest(".random-quip-category");
-    if (!button) return;
+  function previewRecentGradient(event) {
+    if (event.pointerType === "touch") return;
+    const button = event.target.closest(".recent-gradient-swatch");
+    if (!button || button.contains(event.relatedTarget)) return;
+    const entry = getRecentGradients()[+button.dataset.index];
+    if (!entry) return;
+    recentPreviewActive = true;
+    hoveredPresetColors = presetColorsBySlot(entry.colors);
+    renderEditorPresetPreview(true);
+  }
 
-    activeQuipCategory = button.dataset.category || "all";
-    renderRandomQuipCategories();
-    renderRandomQuips();
-    scheduleRandomQuipRefresh();
+  function clearRecentHover() {
+    if (!recentPreviewActive) return;
+    recentPreviewActive = false;
+    hoveredPresetColors = null;
+    renderEditorPresetPreview(true);
+  }
+
+  // Preview sources can disappear or lose pointer events when focus/window state changes.
+  gradientBar.addEventListener("pointerenter", clearPresetHover);
+  input.addEventListener("focus", clearPresetHover);
+  window.addEventListener("blur", clearPresetHover);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) clearPresetHover();
   });
 
-  toggleQuipsBtn?.addEventListener("click", () => {
-    randomQuipsBody?.classList.toggle("hidden");
-    const open = !randomQuipsBody?.classList.contains("hidden");
-    toggleQuipsBtn.classList.toggle("active", open);
-    toggleQuipsBtn.setAttribute("aria-expanded", String(open));
-    toggleQuipsBtn.setAttribute("aria-label", open ? "Collapse verbal arsenal" : "Expand verbal arsenal");
-    refreshQuipsBtn?.classList.toggle("hidden", !open);
-  });
-
-  refreshQuipsBtn?.addEventListener("click", () => {
-    if (randomQuipsBody?.classList.contains("hidden")) {
-      randomQuipsBody.classList.remove("hidden");
-      toggleQuipsBtn.classList.add("active");
-      toggleQuipsBtn.setAttribute("aria-expanded", "true");
-      toggleQuipsBtn.setAttribute("aria-label", "Collapse verbal arsenal");
-      refreshQuipsBtn.classList.remove("hidden");
-    }
-
-    renderRandomQuips();
-    scheduleRandomQuipRefresh();
+  recentGradients?.addEventListener("pointerover", previewRecentGradient);
+  recentGradients?.addEventListener("focusin", previewRecentGradient);
+  recentGradients?.addEventListener("pointerleave", clearRecentHover);
+  recentGradients?.addEventListener("pointercancel", clearRecentHover);
+  recentGradients?.addEventListener("focusout", event => {
+    if (!recentGradients.contains(event.relatedTarget)) clearRecentHover();
   });
 
   recentGradients?.addEventListener("click", event => {
@@ -1323,6 +1568,8 @@ window.addEventListener("DOMContentLoaded", () => {
     const entry = getRecentGradients()[+button.dataset.index];
     if (!entry) return;
 
+    recentPreviewActive = false;
+    hoveredPresetColors = null;
     applySavedGradient(entry.colors);
     showToast("Recent gradient restored");
   });
@@ -1333,12 +1580,19 @@ window.addEventListener("DOMContentLoaded", () => {
     renderTemperatureControl();
   });
 
+  generatorModeButtons.forEach(button => {
+    button.onclick = () => {
+      setGeneratorMode(button.dataset.generatorMode);
+      showToast(`${generatorModeLabel(generatorMode)} generator`);
+    };
+  });
+
   themeModeButtons.forEach(button => {
     button.onclick = () => setThemeMode(button.dataset.themeMode);
   });
 
   copyBtn.onclick = () => {
-    const text = stripClosingTags(output.value);
+    const text = getCopyText();
     copy(text);
 
     if (window.gtag) {
@@ -1361,7 +1615,7 @@ window.addEventListener("DOMContentLoaded", () => {
     trackAutoCopy("auto_copy_toggle");
 
     if (autoCopyEnabled) {
-      const text = stripClosingTags(output.value);
+      const text = getCopyText();
       if (text) {
         copy(text, "Auto copy enabled", { silent: false });
         lastAutoCopied = text;
@@ -1372,6 +1626,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
     showToast(autoCopyEnabled ? "Auto copy enabled" : "Auto copy disabled");
   };
+
 
   saveGradientBtn.onclick = () => {
     const colors = paletteColors.slice(0, desiredColorCount).map(normalizeHex);
@@ -1396,8 +1651,8 @@ window.addEventListener("DOMContentLoaded", () => {
     ensureActivePresetSelection();
     renderPresetCategories();
     renderPresetThemes();
-    renderPresetDetail();
-    renderSaved(quipList, gradientList, savedOptions);
+    renderPresetSelection();
+    renderSaved(quipList, savedOptions);
     update();
     showToast("Gradient saved");
   };
@@ -1417,6 +1672,19 @@ window.addEventListener("DOMContentLoaded", () => {
 
   let lastTracked = "";
   let trackTimeout;
+
+  function composeMessage(previewColors = null) {
+    selectionModel?.sync(input.value);
+    const effects = getEffects();
+    const randomEffects = getRandomEffectPlan(input.value);
+    if (selectionModel) {
+      return selectionModel.compose(depth, effects, randomEffects, previewColors, { maxLength: 500 });
+    }
+    return {
+      raw: applyStyles(build(input.value, depth, { randomEffects, previewColors }), effects),
+      parts: partsWithRandomEffects(input.value, randomEffects, previewColors)
+    };
+  }
 
   function update() {
     const text = input.value;
@@ -1462,12 +1730,21 @@ window.addEventListener("DOMContentLoaded", () => {
       updateUIGradient();
     }
 
-    const built = build(text, depth);
-    const effects = getEffects();
+    renderMessage({ autoCopy: true });
 
-    const styled = applyStyles(built, effects);
+    if (window.gtag && text.length > 3) {
+      window.gtag('event', 'active_use', {
+        event_category: 'engagement',
+        value: text.length
+      });
+    }
+  }
 
-    const clean = stripClosingTags(styled);
+  function renderMessage({ autoCopy = false } = {}) {
+    const message = composeMessage(hoveredPresetColors);
+    const clean = compactOutput(message.raw);
+    updateEffectsSummary();
+    updateCharCount(clean.length);
 
     if (clean.length > 500) {
       charWarning.classList.remove("hidden");
@@ -1482,29 +1759,20 @@ window.addEventListener("DOMContentLoaded", () => {
     output.value = clean;
     outputDisplay.innerHTML = renderFormattedOutput(clean);
 
-    if (autoCopyEnabled && clean && clean !== lastAutoCopied) {
+    if (autoCopy && !hoveredPresetColors && autoCopyEnabled && clean && clean !== lastAutoCopied) {
       lastAutoCopied = clean;
       copy(clean, "Copied", { silent: true });
       trackAutoCopy("auto_copy_trigger", clean);
     }
 
-    renderPreview(preview, parts(text, depth), effects);
-
-    if (window.gtag && text.length > 3) {
-      window.gtag('event', 'active_use', {
-        event_category: 'engagement',
-        value: text.length
-      });
-    }
+    renderRichPreview(preview, clean);
 
     fitPreview();
-    updateCharCount();
-    updateEffectsSummary();
   }
 
   saveQuipBtn.onclick = () => {
-    const v = stripClosingTags(output.value.trim());
-    if (!v) return;
+    const v = getCopyText();
+    if (!v.trim()) return;
 
     let list = getList("gd-quips");
 
@@ -1516,8 +1784,8 @@ window.addEventListener("DOMContentLoaded", () => {
     list.push(v);
     saveList("gd-quips", list);
 
-    renderSaved(quipList, gradientList, savedOptions);
-    showToast("Clipboard saved");
+    renderSaved(quipList, savedOptions);
+    showToast("Saved to Phrases");
 
     if (window.gtag) {
       window.gtag('event', 'save_quip', {
@@ -1527,36 +1795,40 @@ window.addEventListener("DOMContentLoaded", () => {
   };
 
   removeModeBtn.onclick = () => {
+    clearTimeout(removeModeExitTimer);
     state.removeMode = !state.removeMode;
     updateRemoveModeUI();
     renderPresetThemes();
-    renderSaved(quipList, gradientList, savedOptions);
   };
 
   [input, ...effectInputs()].forEach(e => e.oninput = () => {
+    if (e === superscript && superscript.checked) subscript.checked = false;
+    if (e === subscript && subscript.checked) superscript.checked = false;
     updateOptionButtons();
+
     update();
   });
 
   updateOptionButtons();
 
   const savedOptions = {
-    onApplyGradient: applySavedGradient,
-    onGradientError: showToast,
-    onAfterChange: update
+    onAfterChange: () => {
+      update();
+      scheduleRemoveModeExit();
+    }
   };
 
   presetCategories.onclick = event => {
     const button = event.target.closest(".preset-category");
     if (!button) return;
 
+    clearPresetHover();
     activePresetCategory = button.dataset.category;
-    activePresetKey = getPresetCatalog()[activePresetCategory]?.[0]
-      ? makePresetKey(getPresetCatalog()[activePresetCategory][0])
-      : "";
+    activePresetKey = "";
+    shuffleActivePresets();
     renderPresetCategories();
     renderPresetThemes();
-    renderPresetDetail();
+    renderPresetSelection();
   };
 
   presetThemes.onclick = event => {
@@ -1573,58 +1845,114 @@ window.addEventListener("DOMContentLoaded", () => {
       ensureActivePresetSelection();
       renderPresetCategories();
       renderPresetThemes();
-      renderPresetDetail();
+      renderPresetSelection();
       showToast("Gradient removed");
       return;
     }
 
+    clearPresetHover();
     activePresetKey = button.dataset.signature;
+    presetThemes.querySelectorAll(".preset-theme").forEach(item => {
+      const selected = item.dataset.signature === activePresetKey;
+      item.classList.toggle("active", selected);
+      item.setAttribute("aria-pressed", String(selected));
+    });
+    renderPresetSelection();
+    applyPresetGradient();
+  };
+
+  presetThemes.addEventListener("pointerover", event => {
+    if (event.pointerType === "touch") return;
+    const button = event.target.closest(".preset-theme");
+    if (!button || button.contains(event.relatedTarget)) return;
+    const entry = (getPresetCatalog()[activePresetCategory] || []).find(item => makePresetKey(item) === button.dataset.signature);
+    if (!entry) return;
+    recentPreviewActive = false;
+    hoveredPresetColors = presetColorsBySlot(entry.colors);
+    renderEditorPresetPreview();
+  });
+  presetThemes.addEventListener("pointerout", event => {
+    const button = event.target.closest(".preset-theme");
+    if (button && !button.contains(event.relatedTarget)) clearPresetHover();
+  });
+  presetThemes.addEventListener("pointercancel", clearPresetHover);
+  presetThemes.addEventListener("pointerleave", clearPresetHover);
+
+  presetFavoriteBtn.onclick = () => toggleFavoritePreset();
+  function applyRandomCategoryPreset() {
+    const entries = getPresetCatalog()[activePresetCategory] || [];
+    clearPresetHover();
+    const preset = entries.length ? entries[randomInt(0, entries.length - 1)] : null;
+    activePresetKey = preset ? makePresetKey(preset) : "";
+    renderPresetCategories();
     renderPresetThemes();
-    renderPresetDetail();
+    renderPresetSelection();
+    if (preset) applyPresetGradient();
+  }
+  el("presetRandomBtn").onclick = applyRandomCategoryPreset;
+  el("clearFxBtn").onclick = () => {
+    trueRandomEffects.value = "";
+    resetRandomEffectPlan();
+    selectionModel?.marks.forEach(mark => { if (mark) delete mark.randomEffects; });
+    updateOptionButtons();
+    update();
   };
+  [
+    { name: "preset", panel: presetDrawer, button: presetBtn, close: presetCloseBtn },
+    { name: "advanced", panel: advancedDrawer, button: advancedBtn, close: advancedCloseBtn }
+  ].forEach(drawer => {
+    drawer.button.setAttribute("aria-controls", drawer.panel.id);
+    drawer.button.setAttribute("aria-expanded", "false");
+    drawer.button.onclick = () => {
+      const open = !drawer.panel.classList.contains("is-open");
+      if (open && drawer.name === "advanced") {
+        advancedTabs.find(tab => tab.dataset.advancedTab === "styles")?.click();
+      }
+      setDrawerOpen(drawer.name, open);
+    };
+    drawer.close.onclick = () => setDrawerOpen(drawer.name, false);
 
-  presetApplyBtn.onclick = () => {
-    if (applyPresetGradient()) {
-      presetPopup.classList.add("hidden");
-    }
-  };
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    if (advancedDrawer.classList.contains("is-open") && advancedDrawer.contains(document.activeElement)) setDrawerOpen("advanced", false);
+    else if (presetDrawer.classList.contains("is-open")) setDrawerOpen("preset", false);
+    else if (advancedDrawer.classList.contains("is-open")) setDrawerOpen("advanced", false);
+  });
+  document.querySelector(".container").addEventListener("transitionend", event => {
+    if (event.propertyName === "width") fitPreview();
+  });
 
-  presetFavoriteBtn.onclick = () => {
-    toggleFavoritePreset();
-  };
-
-  presetBtn.onclick = () => {
-    presetPopup.classList.remove("hidden");
-  };
-
-  presetCloseBtn.onclick = () => {
-    presetPopup.classList.add("hidden");
-  };
-
-  presetPopup?.addEventListener("click", e => {
-    if (e.target === presetPopup) {
-      presetPopup.classList.add("hidden");
-    }
+  selectionModel = initSelectionEditor({
+    input, mount: el("selectionEditor"), onChange: update,
+    openDrawer: () => {
+      setDrawerOpen("advanced", true);
+      advancedTabs.find(tab => tab.dataset.advancedTab === "text")?.click();
+      el("selectionEditor").scrollIntoView({ block: "nearest" });
+    },
+    getEffects, getColors: () => state.colors.slice(), makeRandomEffects: makeRandomEffectPlan, generateColors: randColors
   });
 
   requestAnimationFrame(async () => {
-    paletteColors = randColors(4);
+    state.colorLocks = readStoredLocks();
+    syncColorLocks();
+    generatorMode = ["clean", "random"].includes(generatorMode) ? generatorMode : "clean";
+    paletteColors = randColors(desiredColorCount);
     setColors(paletteColors.slice(0, desiredColorCount), { track: false });
 
     updateRemoveModeUI();
     setMode(state.mode);
     await loadPresetGradients();
-    renderSaved(quipList, gradientList, savedOptions);
+    renderSaved(quipList, savedOptions);
     renderAutoCopyButton();
+    renderGeneratorModeControls();
     renderRecentGradients();
     renderTemperatureControl();
     setThemeMode(activeThemeMode);
     updateHighlightUI();
-    renderRandomQuipCategories();
-    renderRandomQuips();
-    scheduleRandomQuipRefresh();
 
-    initFloating(20);
+    updateDrawerLayout();
+    initFloating();
 
     window.guide = initGuide({
       depth,
@@ -1646,19 +1974,11 @@ window.addEventListener("DOMContentLoaded", () => {
     document.documentElement.style.setProperty("--guide-gradient", gradient);
   }
 
-  function updateCharCount() {
+  function updateCharCount(len = compactOutput(composeMessage().raw).length) {
     const totalPill = document.getElementById("totalCountPill");
     const steamPill = document.getElementById("steamCountPill");
     if (!totalPill || !steamPill) return;
 
-    const text = input.value;
-
-    const built = build(text, depth);
-
-    const styled = applyStyles(built, getEffects());
-
-    const clean = stripClosingTags(styled);
-    const len = clean.length;
     const steamLimit = 32;
     const isLightMode = document.body.classList.contains("theme-light");
 

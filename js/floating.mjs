@@ -19,11 +19,13 @@ const assets = [
     "./assets/pngs/floating/AboubiHeadWeapon.png"
 ];
 
+let loadedAssets = [];
+
 // track how many of each are active
 const usage = new Map();
 
 function getAvailableAsset() {
-    const shuffled = [...assets].sort(() => Math.random() - 0.5);
+    const shuffled = [...loadedAssets].sort(() => Math.random() - 0.5);
 
     for (const src of shuffled) {
         const count = usage.get(src) || 0;
@@ -72,6 +74,10 @@ function spawnItem(container, items) {
     el.className = "floating-item";
 
     const img = document.createElement("img");
+    img.alt = "";
+    el.style.visibility = "hidden";
+    img.onload = () => { el.style.visibility = "visible"; };
+    img.onerror = () => { el.remove(); };
     img.src = src;
     el.appendChild(img);
 
@@ -117,12 +123,27 @@ function spawnItem(container, items) {
     };
 }
 
-export function initFloating() {
+export async function initFloating() {
     const container = document.getElementById("floating-bg");
     if (!container) return;
 
     container.innerHTML = "";
     usage.clear();
+
+    // Resolve against the served page, never a filesystem module URL.
+    loadedAssets = (await Promise.all(assets.map(async path => {
+        const src = new URL(path, window.location.href).href;
+        const img = new Image();
+        img.src = src;
+        try {
+            await img.decode();
+            return src;
+        } catch {
+            console.warn(`Unable to load floating image: ${src}`);
+            return null;
+        }
+    }))).filter(Boolean);
+    if (!loadedAssets.length) return;
 
     const items = [];
 
@@ -158,6 +179,7 @@ export function initFloating() {
 
             // REMOVE when off screen
             if (
+                !item.el.isConnected ||
                 item.x < -120 ||
                 item.x > window.innerWidth + 120 ||
                 item.y < -120 ||

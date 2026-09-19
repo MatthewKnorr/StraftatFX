@@ -1,87 +1,21 @@
-import { getList, saveList } from "./storage.mjs";
-import { state } from "./state.mjs";
-import { normalizeHex } from "./gradient.mjs";
+import { compactOutput } from "./formatter.mjs";
+import { getList, saveList, state } from "./state.mjs";
+import { renderFormattedOutput } from "./render.mjs";
 
-function renderStyledText(raw){
-  const wrapper=document.createElement("span");
-  wrapper.className="saved-text-content";
-
-  let color="#fff";
-  let bold=false;
-  let italic=false;
-  let underline=false;
-  let superscript=false;
-  let subscript=false;
-  let strike=false;
-
-  const regex=/<(#[0-9A-Fa-f]{3}(?:[0-9A-Fa-f]{3})?)>|<(\/?)([^>]+)>|(.)/g;
-  let match;
-
-  while((match=regex.exec(raw))){
-    if(match[1]){
-      color=match[1];
-    }else if(match[3]){
-      const closing=match[2]==="/";
-
-      const tagName=match[3].split("=")[0];
-
-      if(tagName==="b") bold=!closing;
-      if(tagName==="i") italic=!closing;
-      if(tagName==="u") underline=!closing;
-      if(tagName==="s") strike=!closing;
-      if(tagName==="sup") superscript=!closing;
-      if(tagName==="sub") subscript=!closing;
-    }else{
-      const s=document.createElement("span");
-      s.textContent=match[4];
-      s.style.color=color;
-
-      if(bold) s.style.fontWeight="700";
-      if(italic) s.style.fontStyle="italic";
-      if(underline || strike) s.style.textDecoration=[underline ? "underline" : "", strike ? "line-through" : ""].filter(Boolean).join(" ");
-      if(superscript){
-        s.style.fontSize="0.65em";
-        s.style.verticalAlign="super";
-      }
-      if(subscript){
-        s.style.fontSize="0.65em";
-        s.style.verticalAlign="sub";
-      }
-
-      wrapper.appendChild(s);
-    }
-  }
-
-  return wrapper;
-}
-
-function gradientSignature(colors){
-  return colors.map(normalizeHex).join("|");
-}
-
-function renderGradient(colors){
-  const wrapper=document.createElement("div");
-  wrapper.className="saved-gradient";
-
-  const preview=document.createElement("div");
-  preview.className="saved-gradient-preview";
-  preview.style.background=colors.length===1
-    ? colors[0]
-    : `linear-gradient(90deg, ${colors.join(", ")})`;
-
-  const label=document.createElement("div");
-  label.className="saved-gradient-label";
-  label.textContent=`${colors.length} Color${colors.length===1?"":"s"}`;
-
-  wrapper.appendChild(preview);
-  wrapper.appendChild(label);
-
+function renderStyledText(raw) {
+  const wrapper = document.createElement("span");
+  wrapper.className = "saved-text-content";
+  wrapper.innerHTML = renderFormattedOutput(compactOutput(raw), { showTags: false });
   return wrapper;
 }
 
 function renderRemoveButton(onRemove){
   const removeX=document.createElement("button");
-  removeX.innerHTML="&times;";
+  removeX.className="saved-remove-btn";
+  removeX.innerHTML='<i class="fa-solid fa-trash" aria-hidden="true"></i>';
+  removeX.type="button";
+  removeX.title="Remove saved item";
+  removeX.setAttribute("aria-label", "Remove saved item");
   removeX.onclick=e=>{
     e.stopPropagation();
     onRemove();
@@ -89,80 +23,53 @@ function renderRemoveButton(onRemove){
   return removeX;
 }
 
-export function renderSaved(quipList,gradientList,options={}){
-  const {
-    onApplyGradient=()=>({ ok:true }),
-    onGradientError=()=>{},
-    onAfterChange=()=>{}
-  }=options;
-
-  if(quipList) quipList.innerHTML="";
-  if(gradientList) gradientList.innerHTML="";
-
-  const quips=getList("gd-quips");
-  const gradients=getList("gd-gradients");
-
-  gradients.forEach(entry=>{
-    const colors=Array.isArray(entry?.colors) ? entry.colors : Array.isArray(entry) ? entry : [];
-    if(!colors.length) return;
-
-    const item=document.createElement("div");
-    item.className="saved-item saved-item-gradient";
-    item.appendChild(renderGradient(colors));
-
-    if(state.removeMode){
-      item.appendChild(renderRemoveButton(()=>{
-        saveList("gd-gradients",gradients.filter(x=>{
-          const entryColors=Array.isArray(x?.colors) ? x.colors : Array.isArray(x) ? x : [];
-          return gradientSignature(entryColors)!==gradientSignature(colors);
-        }));
-        renderSaved(quipList,gradientList,options);
-        onAfterChange();
-      }));
-    }
-
-    item.onclick=()=>{
-      if(state.removeMode)return;
-
-      const result=onApplyGradient(colors);
-
-      if(result?.ok===false){
-        onGradientError(result.message || "Need more text for this gradient");
-      }
-    };
-
-    gradientList?.appendChild(item);
-  });
+export function renderSaved(quipList, { onAfterChange = () => {} } = {}) {
+  if (!quipList) return;
+  quipList.innerHTML = "";
+  const quips = getList("gd-quips");
 
   quips.forEach(q=>{
     const item=document.createElement("div");
     item.className="saved-item saved-item-clipboard";
     item.appendChild(renderStyledText(q));
 
-    if(state.removeMode){
-      item.appendChild(renderRemoveButton(()=>{
-        saveList("gd-quips",quips.filter(x=>x!==q));
-        renderSaved(quipList,gradientList,options);
-        onAfterChange();
-      }));
+    item.appendChild(renderRemoveButton(()=>{
+      saveList("gd-quips",quips.filter(x=>x!==q));
+      renderSaved(quipList, { onAfterChange });
+      onAfterChange();
+    }));
+
+    const feedback = document.createElement("span");
+    feedback.className = "arsenal-copy-feedback";
+    feedback.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>';
+    feedback.setAttribute("aria-live", "polite");
+    item.appendChild(feedback);
+    item.tabIndex = state.removeMode ? -1 : 0;
+    if (!state.removeMode) {
+      item.setAttribute("role", "button");
+      item.setAttribute("aria-label", "Copy saved text");
     }
-
-    item.onclick=()=>{
-      if(state.removeMode)return;
-      navigator.clipboard.writeText(q);
-
-      let t=document.querySelector(".toast");
-
-      if(!t){
-        t=document.createElement("div");
-        t.className="toast";
-        document.body.appendChild(t);
+    let feedbackTimer;
+    item.onclick = async () => {
+      if (state.removeMode) return;
+      try {
+        await navigator.clipboard.writeText(compactOutput(q));
+        feedback.textContent = "\u2713 COPIED";
+        item.classList.add("copied");
+      } catch {
+        feedback.textContent = "Copy failed";
+        item.classList.add("copied");
       }
-
-      t.textContent="Clipboard copied";
-      t.classList.add("show");
-
-      setTimeout(()=>t.classList.remove("show"),1200);
+      clearTimeout(feedbackTimer);
+      feedbackTimer = setTimeout(() => {
+        item.classList.remove("copied");
+        feedback.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>';
+      }, 1200);
+    };
+    item.onkeydown = event => {
+      if (event.target !== item || !["Enter", " "].includes(event.key)) return;
+      event.preventDefault();
+      item.click();
     };
 
     quipList?.appendChild(item);

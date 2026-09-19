@@ -1,14 +1,3 @@
-devnotes.md
-assets/pngs/to be added/wall.png
-assets/pngs/to be added/TheSamePlace_08.png
-assets/pngs/to be added/space.png
-assets/pngs/to be added/sewage.png
-assets/pngs/to be added/sandstone.png
-assets/pngs/to be added/roulettemachine.png
-assets/pngs/to be added/sand.png
-assets/pngs/to be added/poolwater.png
-assets/pngs/to be added/neo oak.png
-assets/pngs/to be added/lava.png
-assets/pngs/to be added/ice.png
-assets/pngs/to be added/cage fight.png
-assets/pngs/to be added/aquagrid.png
+# Local recovery copies (not application source)
+.local-archive/
+rollback-backup-*/
