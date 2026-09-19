@@ -481,11 +481,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     if (open) lastOpenedDrawer = name;
     const compact = compactDrawers();
-    const drawers = [
-      { name: "preset", panel: presetDrawer, button: presetBtn, close: presetCloseBtn },
-      { name: "advanced", panel: advancedDrawer, button: advancedBtn, close: advancedCloseBtn }
-    ];
-    drawers.forEach(drawer => {
+    drawerConfigs().forEach(drawer => {
       if (open) drawer.panel.style.zIndex = drawer.name === name ? "101" : "100";
       if (drawer.name !== name && !(open && compact)) return;
       const active = open && drawer.name === name;
@@ -500,6 +496,13 @@ window.addEventListener("DOMContentLoaded", () => {
       else if (!open && drawer.name === name && restoreFocus) drawer.button.focus({ preventScroll: true });
     });
     updateDrawerLayout();
+  }
+
+  function drawerConfigs() {
+    return [
+      { name: "preset", panel: presetDrawer, button: presetBtn, close: presetCloseBtn },
+      { name: "advanced", panel: advancedDrawer, button: advancedBtn, close: advancedCloseBtn }
+    ].filter(drawer => drawer.panel && drawer.button && drawer.close);
   }
 
   function ensureActivePresetSelection() {
@@ -1897,10 +1900,7 @@ window.addEventListener("DOMContentLoaded", () => {
     updateOptionButtons();
     update();
   };
-  [
-    { name: "preset", panel: presetDrawer, button: presetBtn, close: presetCloseBtn },
-    { name: "advanced", panel: advancedDrawer, button: advancedBtn, close: advancedCloseBtn }
-  ].forEach(drawer => {
+  drawerConfigs().forEach(drawer => {
     drawer.button.setAttribute("aria-controls", drawer.panel.id);
     drawer.button.setAttribute("aria-expanded", "false");
     drawer.button.onclick = () => {

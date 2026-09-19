@@ -1,4 +1,4 @@
-const CACHE_NAME = "straftatfx-v4-20260919";
+const CACHE_NAME = "straftatfx-v4-20260919-2";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -48,18 +48,14 @@ self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
 
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      const fetched = fetch(event.request).then(response => {
+    fetch(event.request).then(response => {
         if (response.ok || response.type === "opaque") {
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, response.clone()));
         }
         return response;
-      }).catch(() => {
+      }).catch(() => caches.match(event.request).then(cached => {
         if (event.request.mode === "navigate") return caches.match("./index.html");
         return cached || Response.error();
-      });
-
-      return cached || fetched;
-    })
+      }))
   );
 });
